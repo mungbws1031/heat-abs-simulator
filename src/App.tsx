@@ -46,6 +46,7 @@ interface CalibPoint {
   npmi: number; gAbs: number; anContent: number; injTemp: number
   talc: number; glassFiber: number; pc: number; phosphorusFr: number
   carbonFiber: number; nanoclay: number
+  segment: string
   predictedHdt: number; predictedIzod: number; predictedVoc: number
   measuredHdt?: number; measuredIzod?: number; measuredVoc?: number
 }
@@ -82,6 +83,9 @@ const DEFAULT_FORM: Formulation = {
   pcMw: 100, alphaMsanMw: 100,
   // 환경/공정 조건 — 표준에서 중립
   ambientTemp: 23, humidity: 50, materialDried: true,
+  // 가공·이방성·형태학·시험 조건 — 기본값에서 중립
+  compoundingShear: 'med', weldLinePresent: false,
+  rubberBimodal: 0, graftRatio: 40, annealed: false, notchType: 'notched',
   antioxidant: 0.5, lubricant: 1.0,
   injTemp: 250, moldTemp: 70,
   // 매트릭스 개질
@@ -731,6 +735,8 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
           <SliderRow label="고무 가교도(겔)" value={form.gelContent ?? 75}  min={40}  max={90}  step={1}    unit="%"  onChange={set('gelContent')}  highlight={changedKey==='gelContent'} />
           <SliderRow label="PC 분자량지수"   value={form.pcMw ?? 100}       min={70}  max={140} step={5}    unit=""   onChange={set('pcMw')}        highlight={changedKey==='pcMw'} />
           <SliderRow label="αMSAN 분자량지수" value={form.alphaMsanMw ?? 100} min={70} max={140} step={5}    unit=""   onChange={set('alphaMsanMw')} highlight={changedKey==='alphaMsanMw'} />
+          <SliderRow label="이중분포 대입자"  value={form.rubberBimodal ?? 0} min={0}  max={60}  step={5}    unit="%"  onChange={set('rubberBimodal')} highlight={changedKey==='rubberBimodal'} />
+          <SliderRow label="그래프트율"      value={form.graftRatio ?? 40}  min={20}  max={60}  step={1}    unit="%"  onChange={set('graftRatio')}    highlight={changedKey==='graftRatio'} />
 
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide py-2">── 환경/공정 조건</p>
           <SliderRow label="외기/서비스 온도" value={form.ambientTemp ?? 23} min={-40} max={60} step={1} unit="℃"
@@ -752,6 +758,76 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
                 </button>
               ))}
               <span className="text-[10px] text-gray-400 ml-1">건조 시 습도 영향 최소</span>
+            </div>
+          </div>
+
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide py-2">── 가공·시험 조건</p>
+          {/* 컴파운딩 전단 */}
+          <div className="grid grid-cols-[160px_1fr] items-center gap-3 py-1.5 px-2">
+            <Label className="text-sm">컴파운딩 전단</Label>
+            <div className="flex gap-1 items-center flex-wrap">
+              {[
+                { v: 'low'  as const, l: '저전단' },
+                { v: 'med'  as const, l: '표준' },
+                { v: 'high' as const, l: '고전단' },
+              ].map(({ v, l }) => (
+                <button key={l}
+                  className={`px-3 py-1 text-xs rounded border transition-colors ${(form.compoundingShear ?? 'med') === v ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400'}`}
+                  onClick={() => setForm(f => ({ ...f, compoundingShear: v }))}>
+                  {l}
+                </button>
+              ))}
+            </div>
+            <span className="col-span-2 text-[10px] text-gray-400 -mt-0.5 pl-2">저전단=섬유길이 유지(보강↑), 고전단=분산↑/섬유파단</span>
+          </div>
+          {/* 웰드라인 */}
+          <div className="grid grid-cols-[160px_1fr] items-center gap-3 py-1.5 px-2">
+            <Label className="text-sm">웰드라인</Label>
+            <div className="flex gap-1 items-center">
+              {[
+                { v: true,  l: '있음' },
+                { v: false, l: '없음' },
+              ].map(({ v, l }) => (
+                <button key={l}
+                  className={`px-3 py-1 text-xs rounded border transition-colors ${(form.weldLinePresent ?? false) === v ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400'}`}
+                  onClick={() => setForm(f => ({ ...f, weldLinePresent: v }))}>
+                  {l}
+                </button>
+              ))}
+            </div>
+            <span className="col-span-2 text-[10px] text-gray-400 -mt-0.5 pl-2">용접선 부위 충격·인장 저하 (충전재일수록 심함)</span>
+          </div>
+          {/* 어닐링 */}
+          <div className="grid grid-cols-[160px_1fr] items-center gap-3 py-1.5 px-2">
+            <Label className="text-sm">어닐링</Label>
+            <div className="flex gap-1 items-center">
+              {[
+                { v: true,  l: '함' },
+                { v: false, l: '안함' },
+              ].map(({ v, l }) => (
+                <button key={l}
+                  className={`px-3 py-1 text-xs rounded border transition-colors ${(form.annealed ?? false) === v ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400'}`}
+                  onClick={() => setForm(f => ({ ...f, annealed: v }))}>
+                  {l}
+                </button>
+              ))}
+              <span className="text-[10px] text-gray-400 ml-1">응력완화 → HDT↑</span>
+            </div>
+          </div>
+          {/* 노치 시험 */}
+          <div className="grid grid-cols-[160px_1fr] items-center gap-3 py-1.5 px-2">
+            <Label className="text-sm">노치 시험</Label>
+            <div className="flex gap-1 items-center">
+              {[
+                { v: 'notched'   as const, l: '노치' },
+                { v: 'unnotched' as const, l: '무노치' },
+              ].map(({ v, l }) => (
+                <button key={l}
+                  className={`px-3 py-1 text-xs rounded border transition-colors ${(form.notchType ?? 'notched') === v ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400'}`}
+                  onClick={() => setForm(f => ({ ...f, notchType: v }))}>
+                  {l}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -890,6 +966,12 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
                   style={{ background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0' }}>
                   {pred.segment}
                 </span>
+                {form.weldLinePresent && (
+                  <span className="text-xs px-2 py-0.5 rounded font-medium"
+                    style={{ background: '#fef3c7', color: '#b45309', border: '1px solid #f59e0b' }}>
+                    ⚠ 웰드라인
+                  </span>
+                )}
                 {((!(form.materialDried ?? true) && (form.humidity ?? 50) >= 70) || (form.ambientTemp ?? 23) < 0) && (
                   <span className="text-xs px-2 py-0.5 rounded font-medium"
                     style={{ background: '#fef3c7', color: '#b45309', border: '1px solid #f59e0b' }}>
@@ -899,6 +981,22 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
                 {calibResult?.active
                   ? <Badge className="text-xs bg-green-600 text-white border-0">M5 보정 적용 중</Badge>
                   : <Badge variant="outline" className="text-xs">Cold-start</Badge>}
+                {(() => {
+                  const conf = pred.confidence
+                  const map: Record<typeof conf, { label: string; bg: string; color: string; border: string }> = {
+                    cold:   { label: '콜드스타트',   bg: '#f1f5f9', color: '#475569', border: '#cbd5e1' },
+                    low:    { label: '신뢰도 낮음', bg: '#fef3c7', color: '#b45309', border: '#f59e0b' },
+                    medium: { label: '신뢰도 보통', bg: '#dbeafe', color: '#1d4ed8', border: '#93c5fd' },
+                    high:   { label: '신뢰도 높음', bg: '#dcfce7', color: '#15803d', border: '#86efac' },
+                  }
+                  const m = map[conf]
+                  return (
+                    <span className="text-xs px-2 py-0.5 rounded font-medium"
+                      style={{ background: m.bg, color: m.color, border: `1px solid ${m.border}` }}>
+                      {m.label}
+                    </span>
+                  )
+                })()}
               </div>
             </div>
           </CardHeader>
@@ -906,9 +1004,18 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
             <MetricGauge label={SPEC.hdt.label}  {...pred.hdt}  unit={SPEC.hdt.unit}  min={SPEC.hdt.min}  max={SPEC.hdt.max}  target={SPEC.hdt.target}  higherIsBetter={true} />
             <MetricGauge label="HDT (0.45MPa)" {...pred.hdt045} unit="℃" min={90} max={160} higherIsBetter={true} />
             <MetricGauge label={SPEC.vicat.label} {...pred.vicat} unit={SPEC.vicat.unit} min={SPEC.vicat.min} max={SPEC.vicat.max} higherIsBetter={true} />
-            <MetricGauge label={SPEC.izod.label} {...pred.izod} unit={SPEC.izod.unit} min={SPEC.izod.min} max={SPEC.izod.max} target={SPEC.izod.target} higherIsBetter={true} />
+            {form.notchType === 'unnotched'
+              ? <MetricGauge label="Izod 충격(무노치)" {...pred.izodUnnotched} unit={SPEC.izod.unit} min={0} max={120} higherIsBetter={true} />
+              : <MetricGauge label="Izod 충격(노치)" {...pred.izod} unit={SPEC.izod.unit} min={SPEC.izod.min} max={SPEC.izod.max} target={SPEC.izod.target} higherIsBetter={true} />}
             {/* 인장강도 */}
             <MetricGauge label="인장강도" {...pred.tensile} unit="MPa" min={15} max={80} higherIsBetter={true} />
+            {/* 직각방향 인장 (이방성) — 섬유 충전재일 때만 */}
+            {(form.glassFiber + form.carbonFiber) > 0 && (
+              <div className="flex items-baseline justify-between -mt-1 mb-2 px-0.5">
+                <span className="text-[11px] text-gray-400">인장(직각방향) <span className="text-[9px] text-amber-500">이방성</span></span>
+                <span className="text-xs font-mono text-gray-400 tabular-nums">{pred.tensileCross.value.toFixed(1)} <span className="text-[10px]">MPa</span></span>
+              </div>
+            )}
             {/* 비중 */}
             <MetricGauge label="비중 (계산)" {...pred.density} unit="g/cm³" min={1.0} max={1.5} higherIsBetter={false} />
             {/* MI 4조건 탭 */}
@@ -1989,6 +2096,7 @@ function M5CalibrationTab({
       id: Date.now(),
       lot: lot || `CAL-${calibPoints.length + 1}`,
       npmi, gAbs, anContent, injTemp, talc, glassFiber, pc, phosphorusFr, carbonFiber, nanoclay,
+      segment: raw.segment,
       predictedHdt:  raw.hdt.value,
       predictedIzod: raw.izod.value,
       predictedVoc:  raw.voc.value,
@@ -2019,6 +2127,7 @@ function M5CalibrationTab({
       phosphorusFr: r.formulation.phosphorusFr,
       carbonFiber:  r.formulation.carbonFiber,
       nanoclay:     r.formulation.nanoclay,
+      segment:      r.prediction.segment,
       predictedHdt:  r.prediction.hdt.value,
       predictedIzod: r.prediction.izod.value,
       predictedVoc:  r.prediction.voc.value,
@@ -2237,16 +2346,43 @@ function M5CalibrationTab({
                   </Button>
                 </div>
 
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] px-2 py-0.5 rounded font-semibold"
+                    style={calibResult.mode === 'segment'
+                      ? { background: '#ede9fe', color: '#6d28d9', border: '1px solid #c4b5fd' }
+                      : { background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1' }}>
+                    {calibResult.mode === 'segment' ? '세그먼트별 보정' : '전역 보정'}
+                  </span>
+                </div>
+
                 <div className="space-y-2">
-                  <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">── 회귀 계수</p>
+                  <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">── 전역 회귀 계수</p>
                   <CalibStatRow label="HDT"  unit="℃"     c={calibResult.hdt}  />
                   <CalibStatRow label="Izod" unit="kJ/m²" c={calibResult.izod} />
                   <CalibStatRow label="VOC"  unit="µg/g"  c={calibResult.voc}  />
                 </div>
 
+                {calibResult.mode === 'segment' && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">── 세그먼트별 보정</p>
+                    {Object.entries(calibResult.bySegment).map(([seg, fit]) => {
+                      const maxN = Math.max(fit.hdt.n, fit.izod.n, fit.voc.n)
+                      return (
+                        <div key={seg} className="p-2 rounded border bg-violet-50/40 space-y-1.5">
+                          <p className="text-[11px] font-semibold text-violet-700">[{seg}] {maxN}개</p>
+                          {fit.hdt.n  >= 2 && <CalibStatRow label="HDT"  unit="℃"     c={fit.hdt}  />}
+                          {fit.izod.n >= 2 && <CalibStatRow label="Izod" unit="kJ/m²" c={fit.izod} />}
+                          {fit.voc.n  >= 2 && <CalibStatRow label="VOC"  unit="µg/g"  c={fit.voc}  />}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
                 <div className="text-[10px] text-gray-400 pt-1 space-y-0.5 border-t">
                   <p>보정식: y_보정 = scale × y_예측 + offset</p>
                   <p>R² ≥ 0.8 양호 · 0.6~0.8 보통 · &lt; 0.6 데이터 추가</p>
+                  <p>데이터가 적은 물성·세그먼트는 전역 보정으로 대체됩니다. 보정 범위 밖 예측은 불확실성이 자동 확대됩니다.</p>
                 </div>
               </>
             )}
@@ -2459,6 +2595,7 @@ export default function App() {
   const handleFitCalibration = useCallback(() => {
     setCalibPoints(pts => {
       const pairs = pts.map(p => ({
+        segment:       p.segment,
         predictedHdt:  p.predictedHdt,
         predictedIzod: p.predictedIzod,
         predictedVoc:  p.predictedVoc,

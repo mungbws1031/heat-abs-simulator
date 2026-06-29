@@ -25,6 +25,14 @@ export interface Formulation {
   ambientTemp?:   number // 외기/서비스 온도 ℃ (기준 23)
   humidity?:      number // 상대습도 %RH (기준 50)
   materialDried?: boolean // 건조 여부 (기준 true)
+  // ── 가공·이방성 (선택) — 기본값에서 효과 중립
+  compoundingShear?: 'low' | 'med' | 'high' // 컴파운딩 전단 (기준 'med')
+  weldLinePresent?:  boolean               // 웰드라인 존재 (기준 false)
+  // ── 형태학·시험 조건 (선택) — 기본값에서 효과 중립
+  rubberBimodal?: number  // 이중분포 대입자 비율 % (기준 0 = 단일분포)
+  graftRatio?:    number  // 그래프트율 % (기준 40)
+  annealed?:      boolean // 어닐링(응력완화) (기준 false)
+  notchType?:     'notched' | 'unnotched' // 노치/무노치 (기준 'notched')
   // ── 기본 첨가제
   antioxidant:  number   // 산화방지제 phr
   lubricant:    number   // 활제 (EBS) phr
@@ -62,7 +70,9 @@ export interface PredictionResult {
   hdt045:  { value: number; low: number; high: number }   // HDT @ 0.45 MPa
   vicat:   { value: number; low: number; high: number }
   izod:    { value: number; low: number; high: number }
+  izodUnnotched: { value: number; low: number; high: number }  // NEW: 무노치 Izod
   tensile: { value: number; low: number; high: number }   // NEW
+  tensileCross: { value: number; low: number; high: number }   // NEW: 직각방향(이방성)
   density: { value: number; low: number; high: number }   // NEW
   mfi:     { value: number; low: number; high: number }   // 220℃/10kg (기존)
   mi200:   { value: number; low: number; high: number }   // NEW: 200℃/21.6kg
@@ -110,22 +120,25 @@ function gelEfficiency(g: number): number {
 function hdtFromTg(
   tg: number, rubberWt: number,
   talc: number, gf: number, nanoclay: number, cf: number,
-  silane: number, pc: number
+  silane: number, pc: number,
+  fiberEff = 1.0,   // B1: 컴파운딩 전단 → 섬유 보강효율 (기준 'med'에서 1.0)
+  pcCompat = 1.0    // A3: PC/SAN 상용성 (AN=25에서 1.0). pc=0이면 pcBoost=0이라 무관.
 ): number {
   const rubberPenalty = rubberWt * 0.45
   // 충전재 HDT 기여 — 포화형(지수) 강화 (선형 무한증가 제거)
   const silaneMultiplier = silane >= 0.1 ? 1.3 : 1.0
   // 탈크: 소량 기여, plateau ~+7℃
   const talcBoost = 7 * (1 - Math.exp(-talc / 14)) * (silane >= 0.1 ? 1.2 : 1.0)
-  // GF: ~0.8℃/wt% 초기, plateau ~+20℃ — 조태웅 검증
-  const gfBoost   = 20 * (1 - Math.exp(-gf / 25)) * silaneMultiplier
-  // CF: ~1.4℃/wt% 초기, plateau ~+30℃ — 조태웅 검증
-  const cfBoost   = 30 * (1 - Math.exp(-cf / 21))
+  // GF: ~0.8℃/wt% 초기, plateau ~+20℃ — 조태웅 검증 (B1: fiberEff 적용)
+  const gfBoost   = 20 * (1 - Math.exp(-gf / 25)) * silaneMultiplier * fiberEff
+  // CF: ~1.4℃/wt% 초기, plateau ~+30℃ — 조태웅 검증 (B1: fiberEff 적용)
+  const cfBoost   = 30 * (1 - Math.exp(-cf / 21)) * fiberEff
   // 나노클레이: 최대 5wt%에서 효과 포화 (MMT 층간 분산), cap ~+6.5℃
   const nanoclayBoost = Math.min(nanoclay, 5) * 1.3
   // PC 블렌드: 상 블렌드 기여 — PC 분율의 로지스틱(상반전 ~30-40%), pc=0에서 0
+  // A3: PC/SAN 상용성 계수(pcCompat) 적용 — PC 함유 블렌드에만 영향(pc=0이면 0)
   const pcVol = pc / 100
-  const pcBoost = 48 * (1 / (1 + Math.exp(-(pcVol - 0.30) / 0.10)) - 1 / (1 + Math.exp(0.30 / 0.10)))
+  const pcBoost = 48 * (1 / (1 + Math.exp(-(pcVol - 0.30) / 0.10)) - 1 / (1 + Math.exp(0.30 / 0.10))) * pcCompat
   return tg - 17 - rubberPenalty + talcBoost + gfBoost + cfBoost + nanoclayBoost + pcBoost
 }
 
@@ -387,14 +400,15 @@ function buildSummary(f: Formulation, izodBase: number, izodFinal: number, env?:
 }
 
 // 인장강도 (MPa) — 경험식
-export function tensileStrength(f: Formulation, sanWt: number): number {
+export function tensileStrength(f: Formulation, sanWt: number, fiberEff = 1.0): number {
   const baseTensile = 35 + (f.anContent - 24) * 0.8
   const rubberTot = f.gAbs + f.uhmwSr * 0.5 + f.mbs * 0.5 + f.sebs * 0.5 + f.acrylicIm * 0.5
   const rubberPenalty = rubberTot * 0.35
   const npmiEffect = f.npmi * 0.2
   const silaneMultiplier = f.silane >= 0.1 ? 1.3 : 1.0
-  const gfEffect = 35 * (1 - Math.exp(-f.glassFiber / 23)) * silaneMultiplier
-  const cfEffect = 55 * (1 - Math.exp(-f.carbonFiber / 18))
+  // B1: 컴파운딩 전단 → 섬유 보강효율 (기준 'med'에서 1.0)
+  const gfEffect = 35 * (1 - Math.exp(-f.glassFiber / 23)) * silaneMultiplier * fiberEff
+  const cfEffect = 55 * (1 - Math.exp(-f.carbonFiber / 18)) * fiberEff
   const talcEffect = 6 * (1 - Math.exp(-f.talc / 12)) * (f.silane >= 0.1 ? 1.2 : 1.0)
   const nanoclayEffect = 6 * (1 - Math.exp(-Math.min(f.nanoclay, 8) / 4))
   const pcEffect = f.pc * 0.25
@@ -486,6 +500,30 @@ export function predictColdStart(f: Formulation): PredictionResult {
     ? 1 + (ambientTemp - 23) * 0.004
     : Math.max(0.35, 1 - (23 - ambientTemp) * 0.008 - Math.max(0, (-10 - ambientTemp)) * 0.010)
 
+  // ── 가공·이방성 파라미터 (기본값에서 모든 배수 = 1.0 → 예측 불변)
+  const compoundingShear = f.compoundingShear ?? 'med'
+  const weldLinePresent  = f.weldLinePresent  ?? false
+  // B1: 컴파운딩 전단 → 섬유 잔존길이 → 보강효율 (med=1.0)
+  const fiberEff = compoundingShear === 'low' ? 1.08 : compoundingShear === 'high' ? 0.88 : 1.0
+  // B2: 웰드라인 녹다운 — 충전재(섬유)일수록 심함 (false면 1.0)
+  const fiberFrac = (f.glassFiber + f.carbonFiber) / 100
+  const weldKnock = weldLinePresent ? Math.max(0.3, 1 - (0.25 + fiberFrac * 1.5)) : 1.0
+  // B3: 유동/직각 이방성 (출력 전용) — 섬유 충전재일수록 직각방향 물성↓ (무충전 ~1.0)
+  const anisoRatio = Math.max(0.55, 1 - fiberFrac * 1.1)
+
+  // ── 형태학·시험 조건 파라미터 (기본값에서 모든 배수 = 1.0 → 예측 불변)
+  const rubberBimodal = f.rubberBimodal ?? 0
+  const graftRatio    = f.graftRatio    ?? 40
+  const annealed      = f.annealed      ?? false
+  // C1: 이중분포 고무입경 — bonus는 ~25% 대입자에서 최대, 0이면 +0
+  const bimodalBonus = rubberBimodal > 0
+    ? 0.20 * Math.exp(-((rubberBimodal - 25) ** 2) / (2 * 15 ** 2)) : 0
+  // C2: 그래프트율 → 고무-매트릭스 접착 → 충격. 종형(피크 ~45%), 기준 40에서 정확히 1.0
+  const graftEff = Math.exp(-((graftRatio - 45) ** 2) / (2 * 18 ** 2))
+    / Math.exp(-((40 - 45) ** 2) / (2 * 18 ** 2))
+  // A3: PC/SAN 상용성 계수 (AN=25에서 1.0, 벗어나면 감소) — PC 함유 블렌드에만 영향
+  const pcCompat = Math.exp(-((f.anContent - 25) ** 2) / (2 * 8 ** 2))
+
   // 매트릭스 Tg (Fox equation: 미시블 SAN상만 — PC는 비미시블이라 제외)
   const tgMatrix = foxTg([
     { w: f.npmi,       tg: Tg_NPMI },
@@ -498,7 +536,10 @@ export function predictColdStart(f: Formulation): PredictionResult {
   // 충격·MFI 계산용: 전체 고무상 합산
   const rubberForIzod = f.gAbs + f.mbs * 0.6 + f.sebs * 0.6 + f.acrylicIm * 0.5 + f.uhmwSr
 
-  const hdtVal  = hdtFromTg(tgMatrix, rubberForHDT, f.talc, f.glassFiber, f.nanoclay, f.carbonFiber, f.silane, f.pc)
+  let hdtVal  = hdtFromTg(tgMatrix, rubberForHDT, f.talc, f.glassFiber, f.nanoclay, f.carbonFiber, f.silane, f.pc, fiberEff, pcCompat)
+  // C3: 어닐링 → 성형내응력/배향 완화 → HDT↑ (PC 블렌드는 추가 상승). false면 +0.
+  // hdt045·vicat floor 파생 전에 적용해 일관성 유지.
+  if (annealed) hdtVal += 5 + Math.min(f.pc, 40) * 0.1
   // Vicat: Tg로부터 독립 산정 (비정질 Vicat B50 ≈ Tg − ~6℃), 물리적으로 항상 ≥ HDT
   let vicatVal = tgMatrix - 6 - rubberForHDT * 0.15
   vicatVal = Math.max(vicatVal, hdtVal + 4)
@@ -516,6 +557,24 @@ export function predictColdStart(f: Formulation): PredictionResult {
   // 환경: 수분 가수분해 + 서비스/시험 온도
   izodFinal *= moistureKnockdown * izodTempFactor
 
+  // ── 상호작용항 (GROUP A) — 모두 기준값에서 ×1.0
+  // A1: 고무 × 매트릭스 분자량 — 강인한 매트릭스가 고무 효율↑ (sanMw=100에서 중립)
+  izodFinal *= (1 + 0.15 * (sanMw / 100 - 1))
+  // A2: FR × 충격보강제 (취성 상쇄) — IM이 FR 취성화를 부분 회복 (FR 또는 IM 없으면 중립)
+  const imTotal = f.ema + f.uhmwSr + f.mbs + f.sebs + f.acrylicIm
+  if (f.phosphorusFr > 0) {
+    izodFinal *= (1 + Math.min(0.30, imTotal * 0.02) * Math.min(1, f.phosphorusFr / 10))
+  }
+
+  // ── 형태학 (GROUP C) — 기준값에서 ×1.0
+  // C1: 이중분포 고무입경 — 충격-강성 균형 보너스 (rubberBimodal=0에서 +0)
+  izodFinal *= (1 + bimodalBonus)
+  // C2: 그래프트율 → 고무-매트릭스 접착 (graftRatio=40에서 정확히 1.0)
+  izodFinal *= graftEff
+
+  // B2: 웰드라인 녹다운 — 충격 저하 (weldLinePresent=false에서 1.0)
+  izodFinal *= weldKnock
+
   let mfiVal = mfiEstimate(f.npmi, rubberForIzod, f.lubricant, f.injTemp, f.glassFiber, f.talc, f.ema, f.pc, f.nanoclay, f.carbonFiber, f.mbs, f.sebs, f.wax)
   // SAN 분자량↑ → 점도↑ → MFI↓ (기준 100 → ×1)
   mfiVal *= (1 / mwFactor) ** 1.5
@@ -530,7 +589,13 @@ export function predictColdStart(f: Formulation): PredictionResult {
 
   const err = (v: number, pct: number) => ({ value: v, low: v * (1 - pct), high: v * (1 + pct) })
 
-  const tensileVal = tensileStrength(f, sanWt) * (sanMw / 100) ** 0.2 * moistureKnockdown
+  // B1: fiberEff(섬유 보강효율), B2: weldKnock(웰드라인) 적용
+  const tensileVal = tensileStrength(f, sanWt, fiberEff) * (sanMw / 100) ** 0.2 * moistureKnockdown * weldKnock
+  // B3: 직각방향 인장 (이방성) — 섬유 충전재일수록 낮음 (무충전 ~1.0)
+  const tensileCrossVal = tensileVal * anisoRatio
+  // C4: 무노치 Izod — 취성(저고무)일수록 큰 배수, 강인할수록 ~3× (cap 12)
+  const unnotchedFactor = Math.min(12, 2.5 + 60 / Math.max(izodFinal, 3))
+  const izodUnnotchedVal = izodFinal * unnotchedFactor
   const densityVal = densityCalc(f, sanWt)
   // MI 4조건: Arrhenius(온도) + power-law(하중). mfiVal(220℃/10kg) 기준, 모든 흐름 보정 후 파생.
   // Ea=120 kJ/mol (ABS 실측), 하중 지수 1.3 (전단박화 반영) — v13 실측(1,744 exp) ordering 일치
@@ -550,7 +615,9 @@ export function predictColdStart(f: Formulation): PredictionResult {
     hdt045:  err(hdt045Val, 0.07),
     vicat:   err(vicatVal,  0.06),
     izod:    err(izodFinal, 0.20),
+    izodUnnotched: err(izodUnnotchedVal, 0.25),
     tensile: err(tensileVal, 0.08),
+    tensileCross: err(tensileCrossVal, 0.08),
     density: { value: densityVal, low: densityVal * 0.995, high: densityVal * 1.005 },
     mfi:     err(mfiVal,    0.25),
     mi200:   err(mi200Val,  0.25),
