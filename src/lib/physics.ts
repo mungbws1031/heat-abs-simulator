@@ -122,7 +122,8 @@ function hdtFromTg(
   talc: number, gf: number, nanoclay: number, cf: number,
   silane: number, pc: number,
   fiberEff = 1.0,   // B1: 컴파운딩 전단 → 섬유 보강효율 (기준 'med'에서 1.0)
-  pcCompat = 1.0    // A3: PC/SAN 상용성 (AN=25에서 1.0). pc=0이면 pcBoost=0이라 무관.
+  pcCompat = 1.0,   // A3: PC/SAN 상용성 (AN=25에서 1.0). pc=0이면 pcBoost=0이라 무관.
+  npmi = 0          // N-PMI wt% — PC 블렌드 시 N-PMI·PC 내열 이중계상 보정용
 ): number {
   const rubberPenalty = rubberWt * 0.45
   // 충전재 HDT 기여 — 포화형(지수) 강화 (선형 무한증가 제거)
@@ -137,9 +138,13 @@ function hdtFromTg(
   const nanoclayBoost = Math.min(nanoclay, 5) * 1.3
   // PC 블렌드: 상 블렌드 기여 — PC 분율의 로지스틱(상반전 ~30-40%), pc=0에서 0
   // A3: PC/SAN 상용성 계수(pcCompat) 적용 — PC 함유 블렌드에만 영향(pc=0이면 0)
-  const pcVol = pc / 100
-  const pcBoost = 48 * (1 / (1 + Math.exp(-(pcVol - 0.30) / 0.10)) - 1 / (1 + Math.exp(0.30 / 0.10))) * pcCompat
-  return tg - 17 - rubberPenalty + talcBoost + gfBoost + cfBoost + nanoclayBoost + pcBoost
+  // PC HDT 기여 — 포화형(지수): 고PC에서 급등 후 plateau (157→175 폭주 제거)
+  // 실측 curve: pc30→~+31, pc50→~+41, pc60→~+44 (그 이상 saturating)
+  const pcBoost = 52 * (1 - Math.exp(-pc / 33)) * pcCompat
+  // PC·N-PMI 이중계상 보정: PC가 비미시블 분산상으로 들어오면 N-PMI-SAN 매트릭스의
+  // 부피분율이 줄어 매트릭스 Tg가 블렌드 HDT를 과대평가 → PC 분율×N-PMI 만큼 차감
+  const pcNpmiCorr = npmi * (pc / 100) * 4.6
+  return tg - 17 - rubberPenalty + talcBoost + gfBoost + cfBoost + nanoclayBoost + pcBoost - pcNpmiCorr
 }
 
 // Izod 충격 (kJ/m²)
@@ -147,12 +152,16 @@ function izodFromRubber(
   rubberWt: number, npmiWt: number,
   ema: number, uhmwSr: number, pFr: number,
   mbs: number, sebs: number, acrylicIm: number,
-  cf: number, pc: number
+  cf: number, pc: number, alphaMsan = 0, gf = 0, talc = 0
 ): number {
-  // 고무 기여: 로지스틱 S-curve (체감, plateau ~34, knee ~16wt%)
-  const base = 3 + 31 / (1 + Math.exp(-(rubberWt - 16) / 6))
-  const npmiPenalty = npmiWt * 0.4
+  // 고무 기여: 로지스틱 S-curve (체감, plateau ~45, knee ~16wt%)
+  const base = 3 + 42 / (1 + Math.exp(-(rubberWt - 16) / 7))
+  // 강성 내열 매트릭스(N-PMI·αMSAN)는 취성화 → 충격 패널티
+  // N-PMI는 초선형(2차): 저함량(17%)은 완만, 고함량(25%)은 급격히 취성화
+  const npmiPenalty = npmiWt * npmiWt * 0.0306 + alphaMsan * 0.40
   let izod = Math.max(2, base - npmiPenalty)
+  // 탈크: 강성 충전재 → 노치 취성화 (saturating, talc=0 중립)
+  if (talc > 0) izod = Math.max(2, izod - 9 * (1 - Math.exp(-talc / 16)))
 
   // 인계 난연제 패널티: 완화 (PMC6401830)
   if (pFr > 0) {
@@ -175,10 +184,14 @@ function izodFromRubber(
   izod += sebs * 0.5
   // 아크릴계: +0.35 kJ/m² per wt%
   izod += acrylicIm * 0.35
-  // PC 블렌드: 인성 기여 +0.3 kJ/m² per wt%
-  izod += pc * 0.3
+  // PC 블렌드: PC/ABS는 매우 강인 — 포화형+선형 기여 (pc30→~+34, pc50→~+43, pc60→~+47)
+  // 기존 pc*0.3 은 너무 약해 PC/ABS izod 50~60 도달 불가 → 재정합
+  izod += 33 * (1 - Math.exp(-pc / 18)) + 0.25 * pc
   // CF: 취성화 경향 (-0.3 kJ/m² per wt%, notched Izod 기준)
   if (cf > 0) izod = Math.max(2, izod - cf * 0.3)
+  // GF: 노치 취성화 — 완만(saturating). gf30 실측이 gf20보다 높아 강한 패널티는 역효과 → 약하게.
+  if (gf > 0) izod = Math.max(2, izod - 3 * (1 - Math.exp(-gf / 20)))
+  void gf
 
   // 충격보강제 시너지 폭주 방지: 고무 base의 3.5배 소프트 캡
   izod = Math.min(izod, base * 3.5)
@@ -190,21 +203,24 @@ function izodFromRubber(
 function mfiEstimate(
   npmi: number, rubber: number, lub: number,
   injTemp: number, gf: number, talc: number, ema: number,
-  pc: number, nanoclay: number, cf: number, mbs: number, sebs: number, wax: number
+  pc: number, nanoclay: number, cf: number, mbs: number, sebs: number, wax: number,
+  alphaMsan = 0, pFr = 0
 ): number {
-  const base = 20
-  const npmiEffect    = -npmi * 0.4
-  const rubberEffect  = -rubber * 0.1
+  const base = 90
+  const npmiEffect    = -npmi * 2.74
+  const alphaMsanEff  = -alphaMsan * 0.72  // αMSAN 고점도
+  const rubberEffect  = -rubber * 1.07
   const lubEffect     = lub * 8
   const waxEffect     = wax * 3
   const tempEffect    = (injTemp - 250) * 0.3
-  const fillerEffect  = -(gf * 0.30 + talc * 0.15 + nanoclay * 0.50 + cf * 0.40)
+  const fillerEffect  = -(gf * 1.03 + talc * 0.81 + nanoclay * 0.50 + cf * 1.77)
+  const frEffect      = -pFr * 0.64        // 인계 FR → 점도↑ (실측 MFI↓)
   const emaEffect     = ema * 0.3
-  const pcEffect      = -pc * 0.2      // PC 고점도
+  const pcEffect      = -pc * 0.42      // PC 고점도
   const mbsEffect     = -mbs * 0.05
   const sebsEffect    = -sebs * 0.10
-  return Math.max(1, base + npmiEffect + rubberEffect + lubEffect + waxEffect
-    + tempEffect + fillerEffect + emaEffect + pcEffect + mbsEffect + sebsEffect)
+  return Math.max(1, base + npmiEffect + alphaMsanEff + rubberEffect + lubEffect + waxEffect
+    + tempEffect + fillerEffect + frEffect + emaEffect + pcEffect + mbsEffect + sebsEffect)
 }
 
 // VOC/TVOC 추정 (µg/g, VDA278)
@@ -401,18 +417,18 @@ function buildSummary(f: Formulation, izodBase: number, izodFinal: number, env?:
 
 // 인장강도 (MPa) — 경험식
 export function tensileStrength(f: Formulation, sanWt: number, fiberEff = 1.0): number {
-  const baseTensile = 35 + (f.anContent - 24) * 0.8
+  const baseTensile = 42 + (f.anContent - 24) * 0.8
   const rubberTot = f.gAbs + f.uhmwSr * 0.5 + f.mbs * 0.5 + f.sebs * 0.5 + f.acrylicIm * 0.5
-  const rubberPenalty = rubberTot * 0.35
+  const rubberPenalty = rubberTot * 0.20
   const npmiEffect = f.npmi * 0.2
   const silaneMultiplier = f.silane >= 0.1 ? 1.3 : 1.0
   // B1: 컴파운딩 전단 → 섬유 보강효율 (기준 'med'에서 1.0)
-  const gfEffect = 35 * (1 - Math.exp(-f.glassFiber / 23)) * silaneMultiplier * fiberEff
-  const cfEffect = 55 * (1 - Math.exp(-f.carbonFiber / 18)) * fiberEff
-  const talcEffect = 6 * (1 - Math.exp(-f.talc / 12)) * (f.silane >= 0.1 ? 1.2 : 1.0)
+  const gfEffect = 52 * (1 - Math.exp(-f.glassFiber / 25)) * silaneMultiplier * fiberEff
+  const cfEffect = 75 * (1 - Math.exp(-f.carbonFiber / 15)) * fiberEff
+  const talcEffect = 3 * (1 - Math.exp(-f.talc / 12)) * (f.silane >= 0.1 ? 1.2 : 1.0)
   const nanoclayEffect = 6 * (1 - Math.exp(-Math.min(f.nanoclay, 8) / 4))
   const pcEffect = f.pc * 0.25
-  const frEffect = -f.phosphorusFr * 0.35
+  const frEffect = -f.phosphorusFr * 0.10
   const softEffect = -(f.ema * 0.8 + f.uhmwSr * 0.3)
   const alphamsanEffect = f.alphaMsan * 0.15
   void sanWt
@@ -536,7 +552,7 @@ export function predictColdStart(f: Formulation): PredictionResult {
   // 충격·MFI 계산용: 전체 고무상 합산
   const rubberForIzod = f.gAbs + f.mbs * 0.6 + f.sebs * 0.6 + f.acrylicIm * 0.5 + f.uhmwSr
 
-  let hdtVal  = hdtFromTg(tgMatrix, rubberForHDT, f.talc, f.glassFiber, f.nanoclay, f.carbonFiber, f.silane, f.pc, fiberEff, pcCompat)
+  let hdtVal  = hdtFromTg(tgMatrix, rubberForHDT, f.talc, f.glassFiber, f.nanoclay, f.carbonFiber, f.silane, f.pc, fiberEff, pcCompat, f.npmi)
   // C3: 어닐링 → 성형내응력/배향 완화 → HDT↑ (PC 블렌드는 추가 상승). false면 +0.
   // hdt045·vicat floor 파생 전에 적용해 일관성 유지.
   if (annealed) hdtVal += 5 + Math.min(f.pc, 40) * 0.1
@@ -546,8 +562,8 @@ export function predictColdStart(f: Formulation): PredictionResult {
 
   // 실효 g-ABS (고무함량 × 충격효율) — 기준값에서 f.gAbs 그대로
   const gAbsEff = f.gAbs * rubberContentFactor * impactEff
-  const izodBase  = izodFromRubber(gAbsEff, f.npmi, 0, 0, f.phosphorusFr, 0, 0, 0, f.carbonFiber, f.pc)
-  let izodFinal   = izodFromRubber(gAbsEff, f.npmi, f.ema, f.uhmwSr, f.phosphorusFr, f.mbs, f.sebs, f.acrylicIm, f.carbonFiber, f.pc)
+  const izodBase  = izodFromRubber(gAbsEff, f.npmi, 0, 0, f.phosphorusFr, 0, 0, 0, f.carbonFiber, f.pc, f.alphaMsan, f.glassFiber, f.talc)
+  let izodFinal   = izodFromRubber(gAbsEff, f.npmi, f.ema, f.uhmwSr, f.phosphorusFr, f.mbs, f.sebs, f.acrylicIm, f.carbonFiber, f.pc, f.alphaMsan, f.glassFiber, f.talc)
   // SAN 분자량 매트릭스 인성 (기준 100 → ×1)
   izodFinal *= mwFactor ** 0.3
   // 나노클레이 취성화 (−4%/wt%, cap 8wt%, nanoclay=0 중립)
@@ -575,7 +591,7 @@ export function predictColdStart(f: Formulation): PredictionResult {
   // B2: 웰드라인 녹다운 — 충격 저하 (weldLinePresent=false에서 1.0)
   izodFinal *= weldKnock
 
-  let mfiVal = mfiEstimate(f.npmi, rubberForIzod, f.lubricant, f.injTemp, f.glassFiber, f.talc, f.ema, f.pc, f.nanoclay, f.carbonFiber, f.mbs, f.sebs, f.wax)
+  let mfiVal = mfiEstimate(f.npmi, rubberForIzod, f.lubricant, f.injTemp, f.glassFiber, f.talc, f.ema, f.pc, f.nanoclay, f.carbonFiber, f.mbs, f.sebs, f.wax, f.alphaMsan, f.phosphorusFr)
   // SAN 분자량↑ → 점도↑ → MFI↓ (기준 100 → ×1)
   mfiVal *= (1 / mwFactor) ** 1.5
   // 고분자량 PC/αMSAN → 점도↑ → MFI↓ (함량 가중, 함량 0이면 중립)

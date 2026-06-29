@@ -1,4 +1,4 @@
-﻿import { useState, useCallback, useEffect, useRef } from 'react'
+﻿import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -36,6 +36,14 @@ import {
   applyCalibration,
   type CalibResult,
 } from '@/lib/calibration'
+import {
+  validateModel,
+  referenceCalibPairs,
+  REFERENCE_GRADES,
+  type ValidationSummary,
+} from '@/lib/referenceData'
+
+const REFERENCE_GRADES_COUNT = REFERENCE_GRADES.length
 
 // ──────────────────────────────────────────────
 // 타입
@@ -2554,6 +2562,180 @@ function UnitCostsModal({ costs, onChange, onClose }: {
 }
 
 // ──────────────────────────────────────────────
+// M8 검증 탭 (Validation & Grounding)
+// ──────────────────────────────────────────────
+const VAL_PROPS: Array<{ key: string; label: string; unit: string }> = [
+  { key: 'hdt',     label: 'HDT',     unit: '℃' },
+  { key: 'izod',    label: 'Izod',    unit: 'kJ/m²' },
+  { key: 'tensile', label: '인장',     unit: 'MPa' },
+  { key: 'mfi',     label: 'MFI',     unit: 'g/10min' },
+  { key: 'density', label: '비중',     unit: 'g/cm³' },
+  { key: 'vicat',   label: 'Vicat',   unit: '℃' },
+]
+
+function mapeColor(p: number): string {
+  if (p <= 10) return 'text-green-600'
+  if (p <= 20) return 'text-amber-600'
+  return 'text-red-600'
+}
+function cellColor(p: number): string {
+  if (p <= 8) return 'bg-green-50 text-green-700'
+  if (p <= 18) return 'bg-amber-50 text-amber-700'
+  return 'bg-red-50 text-red-700'
+}
+
+function ValidationTab({
+  litActive, onToggleGrounding,
+}: {
+  litActive: boolean
+  onToggleGrounding: (on: boolean) => void
+}) {
+  const raw: ValidationSummary = useMemo(
+    () => validateModel(predictColdStart, DEFAULT_FORM), [],
+  )
+  // 문헌 그라운딩 적용 후의 검증 결과 (BEFORE/AFTER 비교용)
+  const grounded: ValidationSummary = useMemo(() => {
+    const pairs = referenceCalibPairs(predictColdStart, DEFAULT_FORM)
+    const litCalib = fitCalibration(pairs)
+    return validateModel(f => applyCalibration(predictColdStart(f), litCalib), DEFAULT_FORM)
+  }, [])
+
+  const view = litActive ? grounded : raw
+
+  const fmt = (n: number, d = 1) => n.toFixed(d)
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            모델 검증 (M8) — 상용 등급 재현도
+            <Badge variant="secondary" className="text-[10px]">{REFERENCE_GRADES_COUNT}개 등급</Badge>
+          </CardTitle>
+          <p className="text-xs text-gray-500 leading-relaxed mt-1">
+            기준값은 상용 등급·문헌의 대표 전형값입니다. 실제 lot은 ±편차가 있습니다.
+            이 패널은 모델이 알려진 등급을 얼마나 재현하는지 보여줍니다.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* 문헌 기준 보정 토글 */}
+          <div className="flex items-center justify-between rounded-lg border p-3 bg-gray-50">
+            <div>
+              <div className="text-sm font-medium">문헌 기준 보정 (Literature Grounding)</div>
+              <div className="text-xs text-gray-500 mt-0.5">
+                {REFERENCE_GRADES_COUNT}개 등급의 전형값으로 모델을 세그먼트별 보정합니다.
+                적용 시 기존 M5 캘리브레이션은 대체됩니다.
+              </div>
+            </div>
+            <Button
+              variant={litActive ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => onToggleGrounding(!litActive)}>
+              {litActive ? '✓ 적용됨 — 해제' : '문헌 기준 보정 적용'}
+            </Button>
+          </div>
+
+          {/* 전체 MAPE BEFORE/AFTER */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-lg border p-3 text-center">
+              <div className="text-[11px] text-gray-500">보정 전 (raw)</div>
+              <div className={`text-2xl font-bold ${mapeColor(raw.overallMapePct)}`}>{fmt(raw.overallMapePct)}%</div>
+              <div className="text-[10px] text-gray-400">전체 MAPE</div>
+            </div>
+            <div className="rounded-lg border p-3 text-center">
+              <div className="text-[11px] text-gray-500">문헌 보정 후</div>
+              <div className={`text-2xl font-bold ${mapeColor(grounded.overallMapePct)}`}>{fmt(grounded.overallMapePct)}%</div>
+              <div className="text-[10px] text-gray-400">전체 MAPE</div>
+            </div>
+            <div className="rounded-lg border p-3 text-center">
+              <div className="text-[11px] text-gray-500">개선</div>
+              <div className="text-2xl font-bold text-blue-600">
+                {(raw.overallMapePct - grounded.overallMapePct).toFixed(1)}%p
+              </div>
+              <div className="text-[10px] text-gray-400">MAPE 감소</div>
+            </div>
+          </div>
+
+          {/* 프로퍼티별 카드 */}
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
+            {VAL_PROPS.map(p => {
+              const v = view.perProperty[p.key]
+              if (!v) return (
+                <div key={p.key} className="rounded-lg border p-2 text-center opacity-50">
+                  <div className="text-[11px] text-gray-500">{p.label}</div>
+                  <div className="text-sm">—</div>
+                </div>
+              )
+              return (
+                <div key={p.key} className="rounded-lg border p-2 text-center">
+                  <div className="text-[11px] text-gray-500">{p.label}</div>
+                  <div className={`text-lg font-bold ${mapeColor(v.mapePct)}`}>{fmt(v.mapePct)}%</div>
+                  <div className="text-[10px] text-gray-400">
+                    MAE {fmt(v.mae, 2)} · bias {v.bias >= 0 ? '+' : ''}{fmt(v.bias, 2)}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* 세그먼트별 MAPE */}
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(view.perSegment).map(([seg, s]) => (
+              <div key={seg} className="rounded border px-2.5 py-1 text-xs flex items-center gap-1.5">
+                <span className="text-gray-500">{seg}</span>
+                <span className={`font-semibold ${mapeColor(s.mapePct)}`}>{fmt(s.mapePct)}%</span>
+                <span className="text-gray-400">(n={s.n})</span>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 등급별 상세 테이블 */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">등급별 예측 / 전형값 (오차%)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">등급</TableHead>
+                  <TableHead className="text-xs">세그먼트</TableHead>
+                  {VAL_PROPS.map(p => (
+                    <TableHead key={p.key} className="text-xs text-center">{p.label}</TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {view.perGrade.map(g => (
+                  <TableRow key={g.grade.id}>
+                    <TableCell className="text-xs font-medium whitespace-nowrap">{g.grade.name}</TableCell>
+                    <TableCell className="text-[11px] text-gray-500">{g.segment}</TableCell>
+                    {VAL_PROPS.map(p => {
+                      const e = g.errors[p.key]
+                      if (!e) return <TableCell key={p.key} className="text-center text-[11px] text-gray-300">—</TableCell>
+                      const dec = p.key === 'density' ? 2 : p.key === 'mfi' ? 1 : 0
+                      return (
+                        <TableCell key={p.key} className={`text-center text-[11px] tabular-nums rounded ${cellColor(e.pctErr)}`}>
+                          {e.pred.toFixed(dec)} / {e.ref.toFixed(dec)}
+                          <div className="text-[10px] opacity-80">({e.pctErr.toFixed(0)}%)</div>
+                        </TableCell>
+                      )
+                    })}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+// ──────────────────────────────────────────────
 // 메인 App
 // ──────────────────────────────────────────────
 export default function App() {
@@ -2562,6 +2744,31 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('predict')
   const [calibPoints, setCalibPoints] = useState<CalibPoint[]>([])
   const [calibResult, setCalibResult] = useState<CalibResult | null>(null)
+  // 문헌 기준 그라운딩 토글 (localStorage 영속)
+  const [litGrounding, setLitGrounding] = useState<boolean>(() => {
+    try { return localStorage.getItem('abs_lit_grounding') === '1' } catch { return false }
+  })
+
+  // 초기 1회: 저장된 그라운딩 상태가 켜져 있으면 calibResult 복원
+  useEffect(() => {
+    if (litGrounding) {
+      const pairs = referenceCalibPairs(predictColdStart, DEFAULT_FORM)
+      setCalibResult(fitCalibration(pairs))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const handleToggleGrounding = useCallback((on: boolean) => {
+    if (on && !window.confirm('문헌 기준 보정을 적용하면 기존 M5 캘리브레이션이 대체됩니다. 계속할까요?')) return
+    setLitGrounding(on)
+    try { localStorage.setItem('abs_lit_grounding', on ? '1' : '0') } catch { /* ignore */ }
+    if (on) {
+      const pairs = referenceCalibPairs(predictColdStart, DEFAULT_FORM)
+      setCalibResult(fitCalibration(pairs))
+    } else {
+      setCalibResult(null)
+    }
+  }, [])
 
   // 원료 단가 (Feature A)
   const [unitCosts, setUnitCostsState] = useState<UnitCosts>(() => {
@@ -2666,6 +2873,10 @@ export default function App() {
               {records.length > 0 && <Badge variant="secondary" className="ml-1.5 text-xs px-1.5 py-0">{records.length}</Badge>}
             </TabsTrigger>
             <TabsTrigger value="compare">비교 (M7)</TabsTrigger>
+            <TabsTrigger value="validation">
+              검증 (M8)
+              {litGrounding && <span className="ml-1.5 w-2 h-2 rounded-full bg-green-500 inline-block" />}
+            </TabsTrigger>
             <TabsTrigger value="calibration">
               캘리브레이션 (M5)
               {calibResult?.active && <span className="ml-1.5 w-2 h-2 rounded-full bg-green-500 inline-block" />}
@@ -2692,6 +2903,9 @@ export default function App() {
           </TabsContent>
           <TabsContent value="compare">
             <CompareTab onLoad={handleLoadFormulation} />
+          </TabsContent>
+          <TabsContent value="validation">
+            <ValidationTab litActive={litGrounding} onToggleGrounding={handleToggleGrounding} />
           </TabsContent>
           <TabsContent value="calibration">
             <M5CalibrationTab
