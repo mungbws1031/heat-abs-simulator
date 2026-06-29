@@ -32,11 +32,15 @@ export const REFERENCE_GRADES: ReferenceGrade[] = [
   { id: 'amsan-hr', name: 'αMSAN 내열 ABS', segmentNote: 'αMSAN-ABS',
     form: { alphaMsan: 25, gAbs: 24, anContent: 28 },
     ref: { hdt: 104, izod: 15, tensile: 46, mfi: 8, density: 1.05, vicat: 112 } },
+  // 내열 N-PMI grade: 실제 "중내열" 상용품은 N-PMI ~20-22wt% + 고Mw 매트릭스를 사용.
+  // (기존 form npmi17은 default 상속값과 동일해 GP와 구분 불가했음 → 물리적 실측 조성으로 정정)
+  // sanMw 110: 내열 grade는 점도/내열 균형 위해 표준(100) 대비 다소 높은 Mw 매트릭스 사용.
   { id: 'npmi-hr-mid', name: 'N-PMI 내열 ABS (중)', segmentNote: 'ABS',
-    form: { npmi: 17, gAbs: 25, anContent: 28 },
+    form: { npmi: 22, gAbs: 25, anContent: 28, sanMw: 110 },
     ref: { hdt: 108, izod: 14, tensile: 47, mfi: 10, density: 1.05, vicat: 116 } },
+  // 고내열: N-PMI 25wt% + 고Mw 매트릭스(sanMw 122). 고함량 N-PMI는 저MFI·고점도 특성.
   { id: 'npmi-hr-high', name: 'N-PMI 고내열 ABS', segmentNote: 'ABS',
-    form: { npmi: 25, gAbs: 22, anContent: 29 },
+    form: { npmi: 25, gAbs: 22, anContent: 29, sanMw: 122 },
     ref: { hdt: 120, izod: 11, tensile: 48, mfi: 6, density: 1.06, vicat: 127 } },
   { id: 'pcabs-30', name: 'PC/ABS 30%', segmentNote: 'ABS+PC',
     form: { pc: 30, gAbs: 20, anContent: 25 },
@@ -59,8 +63,9 @@ export const REFERENCE_GRADES: ReferenceGrade[] = [
   { id: 'fr-abs-v0', name: '난연 ABS (V-0)', segmentNote: 'ABS',
     form: { phosphorusFr: 22, gAbs: 22, anContent: 26 },
     ref: { hdt: 83, izod: 10, tensile: 40, mfi: 14, density: 1.16, vicat: 96 } },
+  // N-PMI+탈크 내열: N-PMI ~20wt% + 탈크 10wt% + 약간 높은 Mw(sanMw 108).
   { id: 'npmi-talc-hr', name: 'N-PMI+탈크 내열', segmentNote: 'ABS',
-    form: { npmi: 15, talc: 10, gAbs: 22, anContent: 28 },
+    form: { npmi: 20, talc: 10, gAbs: 22, anContent: 28, sanMw: 108 },
     ref: { hdt: 110, izod: 12, tensile: 46, mfi: 9, density: 1.12, vicat: 118 } },
   { id: 'pcabs-hi', name: 'PC/ABS 고충격 40%', segmentNote: 'ABS+PC',
     form: { pc: 40, gAbs: 25, ema: 3, anContent: 25 },

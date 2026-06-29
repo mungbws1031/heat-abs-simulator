@@ -154,11 +154,14 @@ function izodFromRubber(
   mbs: number, sebs: number, acrylicIm: number,
   cf: number, pc: number, alphaMsan = 0, gf = 0, talc = 0
 ): number {
-  // 고무 기여: 로지스틱 S-curve (체감, plateau ~45, knee ~16wt%)
-  const base = 3 + 42 / (1 + Math.exp(-(rubberWt - 16) / 7))
-  // 강성 내열 매트릭스(N-PMI·αMSAN)는 취성화 → 충격 패널티
-  // N-PMI는 초선형(2차): 저함량(17%)은 완만, 고함량(25%)은 급격히 취성화
-  const npmiPenalty = npmiWt * npmiWt * 0.0306 + alphaMsan * 0.40
+  // 고무 기여: 로지스틱 S-curve (체감, plateau ~46, knee ~16wt%)
+  const base = 3 + 44 / (1 + Math.exp(-(rubberWt - 16) / 7))
+  // 강성 내열 매트릭스(N-PMI·αMSAN)는 취성화 → 충격 패널티.
+  // N-PMI 취성화는 매트릭스가 glassy해지며 포화(saturating S-curve): 저함량은 완만,
+  // ~20% 부근에서 급격히 취성화 후 plateau (추가 N-PMI는 노치감도 추가 증가 미미).
+  // 과거 2차항(npmi²·k)은 고함량에서 무한 증가해 mid(22%)/high(25%) 동시 정합 불가 →
+  // 물리적 포화형 로지스틱으로 교체 (npmi17에서 ~10 유지: GP/고충격/중충격 izod 불변).
+  const npmiPenalty = 24.5 / (1 + Math.exp(-(npmiWt - 17.44) / 1.18)) + alphaMsan * 0.42
   let izod = Math.max(2, base - npmiPenalty)
   // 탈크: 강성 충전재 → 노치 취성화 (saturating, talc=0 중립)
   if (talc > 0) izod = Math.max(2, izod - 9 * (1 - Math.exp(-talc / 16)))
@@ -184,9 +187,9 @@ function izodFromRubber(
   izod += sebs * 0.5
   // 아크릴계: +0.35 kJ/m² per wt%
   izod += acrylicIm * 0.35
-  // PC 블렌드: PC/ABS는 매우 강인 — 포화형+선형 기여 (pc30→~+34, pc50→~+43, pc60→~+47)
-  // 기존 pc*0.3 은 너무 약해 PC/ABS izod 50~60 도달 불가 → 재정합
-  izod += 33 * (1 - Math.exp(-pc / 18)) + 0.25 * pc
+  // PC 블렌드: PC/ABS는 매우 강인 — 포화형+선형 기여. 약간 완화(amp 33→31, lin 0.25→0.18)해
+  // pcabs30/50/고충격 과대예측을 정정 (pc30→~+30, pc50→~+39, pc60→~+42)
+  izod += 31 * (1 - Math.exp(-pc / 18)) + 0.18 * pc
   // CF: 취성화 경향 (-0.3 kJ/m² per wt%, notched Izod 기준)
   if (cf > 0) izod = Math.max(2, izod - cf * 0.3)
   // GF: 노치 취성화 — 완만(saturating). gf30 실측이 gf20보다 높아 강한 패널티는 역효과 → 약하게.
@@ -206,8 +209,11 @@ function mfiEstimate(
   pc: number, nanoclay: number, cf: number, mbs: number, sebs: number, wax: number,
   alphaMsan = 0, pFr = 0
 ): number {
-  const base = 90
-  const npmiEffect    = -npmi * 2.74
+  const base = 81.6
+  // N-PMI 직접 유동 패널티: 완만한 선형 + 약한 2차(convex). 과거 -2.74·npmi 단일항이
+  // 고함량에서 과도하게 지배(near-zero clamp)하던 것을 완화하고, 내열 grade의 점도상승은
+  // 분자량 경로(sanMw factor (100/sanMw)^1.5)로 분담. base는 GP(npmi17·sanMw100)=30 유지하도록 재정합.
+  const npmiEffect    = -(npmi * 2.0 + npmi * npmi * 0.012)
   const alphaMsanEff  = -alphaMsan * 0.72  // αMSAN 고점도
   const rubberEffect  = -rubber * 1.07
   const lubEffect     = lub * 8
