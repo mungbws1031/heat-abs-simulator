@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+﻿import { useState, useCallback, useEffect, useRef } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -474,6 +474,106 @@ function SensitivityBars({ formulation, prop }: { formulation: Formulation; prop
 }
 
 // ──────────────────────────────────────────────
+// 자동 제안 컴포넌트
+// ──────────────────────────────────────────────
+const AUTO_SUGGEST_KEY_LABELS: Record<string, string> = {
+  npmi: 'N-PMI', gAbs: 'g-ABS(고무)', anContent: 'AN 함량', pc: 'PC 블렌드',
+  talc: '탈크', glassFiber: 'GF 유리섬유', carbonFiber: 'CF 카본섬유',
+  ema: 'EMA 상용화제', uhmwSr: 'UHMW-SR', phosphorusFr: '인계 FR',
+  nanoclay: '나노클레이',
+}
+
+const WT_KEYS = new Set(['npmi','gAbs','pc','talc','glassFiber','carbonFiber','ema','uhmwSr','phosphorusFr','nanoclay'])
+
+function AutoSuggest({ pred, form, onApply }: {
+  pred: PredictionResult
+  form: Formulation
+  onApply: (patch: Partial<Formulation>) => void
+}) {
+  const needsHDT  = pred.hdt.value  < 115
+  const needsIzod = pred.izod.value < 15
+  const needsVOC  = pred.voc.value  > 50
+
+  if (!needsHDT && !needsIzod && !needsVOC) {
+    return (
+      <div className="text-xs text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2 mb-3">
+        ✅ 모든 Spec 달성 — 원가 절감을 시도해보세요
+      </div>
+    )
+  }
+
+  // compute sensitivity for each failing spec
+  const totalComposition = form.npmi + form.gAbs + form.cbMB
+    + form.pc + form.alphaMsan + form.nanoclay
+    + form.ema + form.uhmwSr + form.mbs + form.sebs + form.acrylicIm
+    + form.phosphorusFr + form.ptfe
+    + form.talc + form.glassFiber + form.carbonFiber
+  const sanEst = Math.max(0, 100 - totalComposition)
+  const formWithSan: Formulation = { ...form, san: sanEst }
+
+  type Suggestion = { key: string; label: string; delta: number; newVal: number; spec: string }
+  const suggestions: Suggestion[] = []
+
+  const makeSuggestions = (spec: 'hdt' | 'izod' | 'voc') => {
+    const sensData = computeSensitivity(formWithSan, spec)
+    // For VOC, lower is better — take negative contributors (sens < 0 means increase in factor decreases VOC)
+    const candidates = spec === 'voc'
+      ? sensData.filter(s => s.value < 0)
+      : sensData.filter(s => s.value > 0)
+    const top2 = candidates.slice(0, 2)
+    for (const s of top2) {
+      const key = s.key as keyof Formulation
+      const curVal = form[key] as number
+      const delta = key === 'anContent' ? 2 : WT_KEYS.has(s.key) ? 3 : 0.5
+      const newVal = curVal + delta
+      // For HDT improvement, check if Izod is hurt >10%
+      let tradeoffWarn = ''
+      if (spec === 'hdt' && !needsIzod) {
+        const patchedForm: Formulation = { ...formWithSan, [key]: newVal }
+        const newPred = predictColdStart(patchedForm)
+        const izodDrop = pred.izod.value - newPred.izod.value
+        if (izodDrop > pred.izod.value * 0.1) {
+          tradeoffWarn = ` ⚠ Izod -${izodDrop.toFixed(1)} 주의`
+        }
+      }
+      suggestions.push({
+        key: s.key,
+        label: AUTO_SUGGEST_KEY_LABELS[s.key] ?? s.key,
+        delta,
+        newVal,
+        spec: spec.toUpperCase() + tradeoffWarn,
+      })
+    }
+  }
+
+  if (needsHDT)  makeSuggestions('hdt')
+  if (needsIzod) makeSuggestions('izod')
+  if (needsVOC)  makeSuggestions('voc')
+
+  const shown = suggestions.slice(0, 4)
+
+  return (
+    <div className="mb-3 space-y-1.5">
+      <p className="text-xs font-semibold text-gray-400">자동 제안</p>
+      {shown.map((s, i) => (
+        <div key={i} className="flex items-center gap-2 border border-gray-200 rounded px-2 py-1.5 bg-gray-50 text-xs">
+          <div className="flex-1 text-gray-700">
+            <span className="font-medium">{s.label}</span>
+            <span className="text-gray-400 ml-1">+{s.delta} → {s.newVal.toFixed(1)}</span>
+            <span className="text-blue-600 ml-1 text-[10px]">({s.spec})</span>
+          </div>
+          <button
+            className="px-2 py-0.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 whitespace-nowrap"
+            onClick={() => onApply({ [s.key]: s.newVal } as Partial<Formulation>)}>
+            적용
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ──────────────────────────────────────────────
 // M1 + M2: 배합 입력기 & 물성 예측기 (실시간)
 // ──────────────────────────────────────────────
 function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLoaded, calibResult }: {
@@ -722,6 +822,29 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">M2 — 물성 예측</CardTitle>
               <div className="flex items-center gap-2">
+                <button
+                  className="text-xs px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:bg-gray-50"
+                  onClick={() => {
+                    const headers = 'LOT,N-PMI,g-ABS,AN함량,PC,αMSAN,나노클레이,EMA,UHMW-SR,MBS,SEBS,아크릴IM,인계FR,PTFE,탈크,GF,CF,실란,산화방지제,활제,왁스,사출온도,금형온도,SAN추정,HDT_1.8,HDT_0.45,Vicat,Izod,인장강도,비중,MFI_220_10,MI_200_21.6,MI_250_2.16,MI_250_5,TVOC,원가,UL94,세그먼트'
+                    const row = [
+                      lotName || '(미지정)',
+                      form.npmi, form.gAbs, form.anContent, form.pc, form.alphaMsan, form.nanoclay,
+                      form.ema, form.uhmwSr, form.mbs, form.sebs, form.acrylicIm,
+                      form.phosphorusFr, form.ptfe, form.talc, form.glassFiber, form.carbonFiber,
+                      form.silane, form.antioxidant, form.lubricant, form.wax,
+                      form.injTemp, form.moldTemp, sanEst.toFixed(1),
+                      pred.hdt.value.toFixed(1), pred.hdt045.value.toFixed(1), pred.vicat.value.toFixed(1),
+                      pred.izod.value.toFixed(1), pred.tensile.value.toFixed(1), pred.density.value.toFixed(3),
+                      pred.mfi.value.toFixed(1), pred.mi200.value.toFixed(1), pred.mi250_2.value.toFixed(1), pred.mi250_5.value.toFixed(1),
+                      pred.voc.value.toFixed(0), pred.cost.value.toFixed(0), pred.ul94, pred.segment,
+                    ].join(',')
+                    const csv = headers + '\n' + row
+                    const a = document.createElement('a')
+                    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
+                    a.download = `M2_pred_${lotName || 'export'}.csv`; a.click()
+                  }}>
+                  📥 CSV 내보내기
+                </button>
                 <span className="text-xs px-2 py-0.5 rounded font-mono"
                   style={{ background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0' }}>
                   {pred.segment}
@@ -783,6 +906,12 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
                 </div>
               </div>
             )}
+            {/* 자동 제안 */}
+            <AutoSuggest
+              pred={pred}
+              form={{ ...form, san: sanEst }}
+              onApply={patch => setForm(f => ({ ...f, ...patch }))}
+            />
             {/* 5단계 표정 미터 */}
             <FaceMeter pred={pred} />
 
@@ -1115,12 +1244,35 @@ function SearchTab({ onLoadFormulation }: { onLoadFormulation: (f: Formulation) 
           <>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm">
-                  탐색 결과 Top {results.length}
-                  <span className="ml-2 text-xs font-normal text-gray-400">
-                    (클릭 → 예측 탭에 로드)
-                  </span>
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm">
+                    탐색 결과 Top {results.length}
+                    <span className="ml-2 text-xs font-normal text-gray-400">
+                      (클릭 → 예측 탭에 로드)
+                    </span>
+                  </CardTitle>
+                  <button
+                    className="text-xs px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:bg-gray-50"
+                    onClick={() => {
+                      const headers = '순위,점수,Spec통과,N-PMI,g-ABS,AN함량,EMA,UHMW-SR,인계FR,탈크,GF,PC,나노클레이,MBS,SEBS,CF,HDT,Izod,TVOC,원가,HDT여유,Izod여유,VOC여유'
+                      const rows = results.map(r => [
+                        r.rank, r.score.toFixed(0), r.specAllPass ? 'Y' : 'N',
+                        r.formulation.npmi, r.formulation.gAbs, r.formulation.anContent,
+                        r.formulation.ema, r.formulation.uhmwSr, r.formulation.phosphorusFr,
+                        r.formulation.talc, r.formulation.glassFiber, r.formulation.pc,
+                        r.formulation.nanoclay, r.formulation.mbs, r.formulation.sebs, r.formulation.carbonFiber,
+                        r.prediction.hdt.value.toFixed(1), r.prediction.izod.value.toFixed(1),
+                        r.prediction.voc.value.toFixed(0), r.prediction.cost.value.toFixed(0),
+                        r.hdtMargin.toFixed(1), r.izodMargin.toFixed(1), r.vocMargin.toFixed(1),
+                      ].join(','))
+                      const csv = [headers, ...rows].join('\n')
+                      const a = document.createElement('a')
+                      a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
+                      a.download = 'M6_search.csv'; a.click()
+                    }}>
+                    📥 CSV 내보내기
+                  </button>
+                </div>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="overflow-auto max-h-[480px]">
@@ -1386,7 +1538,29 @@ function TrackerTab({ records, onUpdateRecord }: {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">M4 — 실험 트래커 ({records.length}건)</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base">M4 — 실험 트래커 ({records.length}건)</CardTitle>
+          <button
+            className="text-xs px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:bg-gray-50"
+            onClick={() => {
+              const headers = 'LOT,N-PMI,g-ABS,AN함량,사출온도,탈크,GF,PC,인계FR,CF,나노클레이,예측HDT,예측Izod,예측VOC,실측HDT,실측Izod,실측VOC,날짜'
+              const rows = records.map(r => [
+                r.lot,
+                r.formulation.npmi, r.formulation.gAbs, r.formulation.anContent, r.formulation.injTemp,
+                r.formulation.talc, r.formulation.glassFiber, r.formulation.pc, r.formulation.phosphorusFr,
+                r.formulation.carbonFiber, r.formulation.nanoclay,
+                r.prediction.hdt.value.toFixed(1), r.prediction.izod.value.toFixed(1), r.prediction.voc.value.toFixed(0),
+                r.actual?.hdt?.toFixed(1) ?? '', r.actual?.izod?.toFixed(1) ?? '', r.actual?.voc?.toFixed(0) ?? '',
+                r.date,
+              ].join(','))
+              const csv = [headers, ...rows].join('\n')
+              const a = document.createElement('a')
+              a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
+              a.download = 'M4_tracker.csv'; a.click()
+            }}>
+            📥 CSV 내보내기
+          </button>
+        </div>
         <p className="text-xs text-gray-500">실측 결과 입력 → 예측-실측 비교 자동 기록</p>
       </CardHeader>
       <CardContent>
@@ -1843,6 +2017,104 @@ function M5CalibrationTab({
 }
 
 // ──────────────────────────────────────────────
+// M7: 배합 비교 테이블
+// ──────────────────────────────────────────────
+function CompareTab({ onLoad }: { onLoad: (f: Formulation) => void }) {
+  const [presets, setPresets] = useState<Record<string, Formulation>>(() => {
+    try { return JSON.parse(localStorage.getItem('abs_saved_presets') ?? '{}') } catch { return {} }
+  })
+
+  const reload = () => {
+    try { setPresets(JSON.parse(localStorage.getItem('abs_saved_presets') ?? '{}')) } catch { /* ignore */ }
+  }
+
+  const names = Object.keys(presets).slice(0, 6)
+
+  if (names.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center text-gray-400 text-sm space-y-2">
+          <p>저장된 배합이 없습니다</p>
+          <p className="text-xs">(M1 예측 탭에서 배합 저장)</p>
+          <Button size="sm" variant="outline" onClick={reload}>새로고침</Button>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const predictions = names.map(n => predictColdStart(presets[n]))
+
+  const hdtColor = (v: number) => v >= 115 ? 'text-green-600 font-bold' : v >= 110 ? 'text-yellow-600 font-bold' : 'text-red-600 font-bold'
+  const izodColor = (v: number) => v >= 15 ? 'text-green-600 font-bold' : v >= 10 ? 'text-yellow-600 font-bold' : 'text-red-600 font-bold'
+  const vocColor = (v: number) => v <= 50 ? 'text-green-600 font-bold' : v <= 70 ? 'text-yellow-600 font-bold' : 'text-red-600 font-bold'
+
+  type Row = { label: string; get: (p: PredictionResult) => string; color?: (p: PredictionResult) => string }
+  const rows: Row[] = [
+    { label: 'HDT(1.8)',  get: p => p.hdt.value.toFixed(1) + '℃',     color: p => hdtColor(p.hdt.value) },
+    { label: 'HDT(0.45)', get: p => p.hdt045.value.toFixed(1) + '℃',  color: p => hdtColor(p.hdt045.value) },
+    { label: 'Vicat',     get: p => p.vicat.value.toFixed(1) + '℃' },
+    { label: 'Izod',      get: p => p.izod.value.toFixed(1) + ' kJ',   color: p => izodColor(p.izod.value) },
+    { label: '인장강도',  get: p => p.tensile.value.toFixed(1) + ' MPa' },
+    { label: '비중',      get: p => p.density.value.toFixed(3) },
+    { label: 'MFI(220/10)', get: p => p.mfi.value.toFixed(1) + ' g/10min' },
+    { label: 'TVOC',      get: p => p.voc.value.toFixed(0) + ' µg/g',  color: p => vocColor(p.voc.value) },
+    { label: 'UL-94',     get: p => p.ul94 },
+    { label: '세그먼트',  get: p => p.segment },
+    { label: '원가',      get: p => p.cost.value.toFixed(0) + ' ₩/kg' },
+  ]
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base">M7 — 배합 비교</CardTitle>
+          <Button size="sm" variant="outline" onClick={reload}>새로고침</Button>
+        </div>
+        <p className="text-xs text-gray-500">저장된 프리셋 최대 6개 비교 (M1에서 배합 저장 필요)</p>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs border-collapse">
+            <thead>
+              <tr className="bg-gray-50 border-b">
+                <th className="text-left px-3 py-2 font-medium text-gray-500 min-w-[90px]">물성</th>
+                {names.map(n => (
+                  <th key={n} className="text-left px-3 py-2 font-medium text-gray-700 min-w-[120px] border-l border-gray-100">{n}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, i) => (
+                <tr key={row.label} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                  <td className="px-3 py-1.5 text-gray-500 font-medium">{row.label}</td>
+                  {predictions.map((p, j) => (
+                    <td key={j} className={`px-3 py-1.5 font-mono border-l border-gray-100 ${row.color ? row.color(p) : 'text-gray-700'}`}>
+                      {row.get(p)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+              {/* Load row */}
+              <tr className="border-t">
+                <td className="px-3 py-2 text-gray-400 text-[11px]">로드</td>
+                {names.map((n, j) => (
+                  <td key={j} className="px-3 py-2 border-l border-gray-100">
+                    <Button size="sm" variant="outline" className="h-6 text-xs px-2"
+                      onClick={() => onLoad(presets[n])}>
+                      이 배합 로드
+                    </Button>
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ──────────────────────────────────────────────
 // 메인 App
 // ──────────────────────────────────────────────
 export default function App() {
@@ -1919,6 +2191,7 @@ export default function App() {
               실험 트래커 (M4)
               {records.length > 0 && <Badge variant="secondary" className="ml-1.5 text-xs px-1.5 py-0">{records.length}</Badge>}
             </TabsTrigger>
+            <TabsTrigger value="compare">비교 (M7)</TabsTrigger>
             <TabsTrigger value="calibration">
               캘리브레이션 (M5)
               {calibResult?.active && <span className="ml-1.5 w-2 h-2 rounded-full bg-green-500 inline-block" />}
@@ -1941,6 +2214,9 @@ export default function App() {
           </TabsContent>
           <TabsContent value="tracker">
             <TrackerTab records={records} onUpdateRecord={handleUpdateRecord} />
+          </TabsContent>
+          <TabsContent value="compare">
+            <CompareTab onLoad={handleLoadFormulation} />
           </TabsContent>
           <TabsContent value="calibration">
             <M5CalibrationTab
