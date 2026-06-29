@@ -76,7 +76,10 @@ const SPEC = {
 
 const DEFAULT_FORM: Formulation = {
   npmi: 17, gAbs: 28, san: 50, anContent: 28,
-  cbMB: 2.5, antioxidant: 0.5, lubricant: 1.0,
+  cbMB: 2.5,
+  // 미세구조 (고급) — 기본값에서 효과 중립
+  gAbsRubber: 50, rubberPSize: 0.3, sanMw: 100, gelContent: 75,
+  antioxidant: 0.5, lubricant: 1.0,
   injTemp: 250, moldTemp: 70,
   // 매트릭스 개질
   pc: 0, alphaMsan: 0, nanoclay: 0,
@@ -717,6 +720,12 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
           <SliderRow label="g-ABS(고무)"  value={form.gAbs}       min={20}  max={40}  step={0.5} unit="wt%"  onChange={set('gAbs')}       highlight={changedKey==='gAbs'} />
           <SliderRow label="SAN AN 함량"  value={form.anContent}  min={24}  max={32}  step={0.5} unit="%"    onChange={set('anContent')}  highlight={changedKey==='anContent'} />
           <SliderRow label="카본블랙 MB"  value={form.cbMB}       min={2}   max={3}   step={0.1} unit="wt%"  onChange={set('cbMB')}       highlight={changedKey==='cbMB'} />
+
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide py-2">── 미세구조 (고급)</p>
+          <SliderRow label="g-ABS 고무함량"  value={form.gAbsRubber ?? 50}  min={30}  max={70}  step={1}    unit="%"  onChange={set('gAbsRubber')}  highlight={changedKey==='gAbsRubber'} />
+          <SliderRow label="고무 평균입경"   value={form.rubberPSize ?? 0.3} min={0.05} max={1.0} step={0.05} unit="μm" onChange={set('rubberPSize')} highlight={changedKey==='rubberPSize'} />
+          <SliderRow label="SAN 분자량지수"  value={form.sanMw ?? 100}      min={60}  max={160} step={5}    unit=""   onChange={set('sanMw')}       highlight={changedKey==='sanMw'} />
+          <SliderRow label="고무 가교도(겔)" value={form.gelContent ?? 75}  min={40}  max={90}  step={1}    unit="%"  onChange={set('gelContent')}  highlight={changedKey==='gelContent'} />
 
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide py-2">── 첨가제</p>
           <SliderRow label="산화방지제"   value={form.antioxidant} min={0.3} max={0.8} step={0.05} unit="phr" onChange={set('antioxidant')} highlight={changedKey==='antioxidant'} />

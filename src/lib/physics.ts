@@ -14,6 +14,11 @@ export interface Formulation {
   san:          number   // SAN wt% (자동 계산)
   anContent:    number   // AN 함량 % (SAN 중)
   cbMB:         number   // 카본블랙 MB wt%
+  // ── 미세구조 (선택) — 기본값에서 효과 중립
+  gAbsRubber?:  number   // g-ABS 내 고무(PB) 함량 % (기준 50)
+  rubberPSize?: number   // 고무 평균 입경 μm (기준 0.3)
+  sanMw?:       number   // SAN 분자량 지수 (기준 100)
+  gelContent?:  number   // 고무 가교도(겔 함량) % (기준 75)
   // ── 기본 첨가제
   antioxidant:  number   // 산화방지제 phr
   lubricant:    number   // 활제 (EBS) phr
@@ -83,6 +88,16 @@ function foxTg(components: Array<{ w: number; tg: number }>): number {
 
 function sanTg(anPct: number): number {
   return Tg_SAN_BASE + (anPct - 27) * 0.6
+}
+
+// 고무 입경 충격 효율 — 0.3μm에서 최대인 로그정규 종형 (기준 0.3 → 1.0)
+function psizeEfficiency(d: number): number {
+  const dd = Math.max(0.02, d)
+  return Math.exp(-((Math.log(dd / 0.3)) ** 2) / (2 * 0.55 ** 2))
+}
+// 가교도(겔) 충격 효율 — 75%에서 최대인 종형 (기준 75 → 1.0)
+function gelEfficiency(g: number): number {
+  return Math.exp(-((g - 75) ** 2) / (2 * 18 ** 2))
 }
 
 // HDT (1.8 MPa) — 경험식 + 충전재 + 나노클레이 + CF + 실란 보정
@@ -308,6 +323,17 @@ function buildSummary(f: Formulation, izodBase: number, izodFinal: number): stri
     msgs.push(`ℹ 탈크 ${f.talc}wt% → HDT +${(f.talc * 0.5).toFixed(1)}℃, 강성·치수 안정↑`)
   }
 
+  // 미세구조 (선택) 인사이트
+  if (f.rubberPSize != null && Math.abs(f.rubberPSize - 0.3) > 0.1) {
+    msgs.push(`ℹ 고무 입경 ${f.rubberPSize}μm — 충격효율 ${(psizeEfficiency(f.rubberPSize) * 100).toFixed(0)}% (최적 ~0.3μm)`)
+  }
+  if (f.gelContent != null && Math.abs(f.gelContent - 75) > 8) {
+    msgs.push(`ℹ 고무 가교도(겔) ${f.gelContent}% — 충격효율 ${(gelEfficiency(f.gelContent) * 100).toFixed(0)}% (최적 ~75%)`)
+  }
+  if (f.sanMw != null && Math.abs(f.sanMw - 100) > 5) {
+    msgs.push(`ℹ SAN 분자량지수 ${f.sanMw} — ${f.sanMw > 100 ? '점도↑·MFI↓·인성↑' : '점도↓·MFI↑·인성↓'} (기준 100)`)
+  }
+
   // 고온 사출 경고
   if (f.injTemp > 260) {
     msgs.push(`⚠ 사출온도 ${f.injTemp}℃ — 체류시간 최소화, N-PMI계 권장 260~280℃`)
@@ -385,6 +411,18 @@ export function predictColdStart(f: Formulation): PredictionResult {
     + f.ptfe + f.carbonFiber
   const sanWt = Math.max(0, 100 - additiveWt)
 
+  // ── 미세구조 파라미터 (기본값에서 모든 배수 = 1.0 → 예측 불변)
+  const gAbsRubber  = f.gAbsRubber  ?? 50
+  const rubberPSize = f.rubberPSize ?? 0.3
+  const sanMw       = f.sanMw       ?? 100
+  const gelContent  = f.gelContent  ?? 75
+  // 실효 고무 배수 (고무함량 기준 50% 대비)
+  const rubberContentFactor = gAbsRubber / 50
+  // 충격 효율 (입경 × 가교도), 기준값(0.3μm, 75%)에서 1.0
+  const impactEff = psizeEfficiency(rubberPSize) * gelEfficiency(gelContent)
+  // SAN 분자량 배수 (기준 100)
+  const mwFactor = sanMw / 100
+
   // 매트릭스 Tg (Fox equation: 글라시 성분만)
   const tgMatrix = foxTg([
     { w: f.npmi,       tg: Tg_NPMI },
@@ -394,7 +432,7 @@ export function predictColdStart(f: Formulation): PredictionResult {
   ])
 
   // HDT 패널티용: 벌크 고무(g-ABS, UHMW-SR)만 — 코어-셸(MBS/SEBS)은 매트릭스 Tg 거의 영향 없음
-  const rubberForHDT  = f.gAbs + f.uhmwSr * 0.5
+  const rubberForHDT  = f.gAbs * rubberContentFactor + f.uhmwSr * 0.5
   // 충격·MFI 계산용: 전체 고무상 합산
   const rubberForIzod = f.gAbs + f.mbs * 0.6 + f.sebs * 0.6 + f.acrylicIm * 0.5 + f.uhmwSr
 
@@ -403,17 +441,23 @@ export function predictColdStart(f: Formulation): PredictionResult {
   const vicatOffset = Math.max(4, 8 - f.glassFiber * 0.1 - f.carbonFiber * 0.15)
   const vicatVal = hdtVal + vicatOffset
 
-  const izodBase  = izodFromRubber(f.gAbs, f.npmi, 0, 0, f.phosphorusFr, 0, 0, 0, f.carbonFiber, f.pc)
-  const izodFinal = izodFromRubber(f.gAbs, f.npmi, f.ema, f.uhmwSr, f.phosphorusFr, f.mbs, f.sebs, f.acrylicIm, f.carbonFiber, f.pc)
+  // 실효 g-ABS (고무함량 × 충격효율) — 기준값에서 f.gAbs 그대로
+  const gAbsEff = f.gAbs * rubberContentFactor * impactEff
+  const izodBase  = izodFromRubber(gAbsEff, f.npmi, 0, 0, f.phosphorusFr, 0, 0, 0, f.carbonFiber, f.pc)
+  let izodFinal   = izodFromRubber(gAbsEff, f.npmi, f.ema, f.uhmwSr, f.phosphorusFr, f.mbs, f.sebs, f.acrylicIm, f.carbonFiber, f.pc)
+  // SAN 분자량 매트릭스 인성 (기준 100 → ×1)
+  izodFinal *= mwFactor ** 0.3
 
-  const mfiVal = mfiEstimate(f.npmi, rubberForIzod, f.lubricant, f.injTemp, f.glassFiber, f.talc, f.ema, f.pc, f.nanoclay, f.carbonFiber, f.mbs, f.sebs, f.wax)
+  let mfiVal = mfiEstimate(f.npmi, rubberForIzod, f.lubricant, f.injTemp, f.glassFiber, f.talc, f.ema, f.pc, f.nanoclay, f.carbonFiber, f.mbs, f.sebs, f.wax)
+  // SAN 분자량↑ → 점도↑ → MFI↓ (기준 100 → ×1). mi200/mi250 파생 전에 적용.
+  mfiVal *= (1 / mwFactor) ** 1.5
   const vocVal = vocEstimate(f.injTemp, f.gAbs, f.antioxidant, f.phosphorusFr, f.nanoclay, f.wax, f.antistatic, f.heatStabilizer)
   const costVal = costEstimate(f)
   const ul94 = ul94Rating(f.phosphorusFr, f.ptfe)
 
   const err = (v: number, pct: number) => ({ value: v, low: v * (1 - pct), high: v * (1 + pct) })
 
-  const tensileVal = tensileStrength(f, sanWt)
+  const tensileVal = tensileStrength(f, sanWt) * (sanMw / 100) ** 0.2
   const densityVal = densityCalc(f, sanWt)
   const mi200Val   = mfiVal * 0.91
   const mi250_2Val = mfiVal * 0.82
