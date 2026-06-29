@@ -10,6 +10,8 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   predictColdStart,
+  explainPrediction,
+  type Explanation,
   computeSensitivity,
   generateScreeningDOE,
   generateRSMDOE,
@@ -168,6 +170,74 @@ function useAnimatedNumber(target: number, duration = 400): number {
   }, [target]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return current
+}
+
+// ──────────────────────────────────────────────
+// 컴포넌트: 예측 근거 분해 (waterfall)
+// ──────────────────────────────────────────────
+function ExplainBlock({ ex }: { ex: Explanation }) {
+  // 바 스케일: base + 가장 큰 |기여| 기준
+  const maxMag = Math.max(
+    Math.abs(ex.base),
+    ...ex.contributions.map(c => Math.abs(c.value)),
+    1e-6,
+  )
+  const w = (v: number) => `${Math.min(100, (Math.abs(v) / maxMag) * 100)}%`
+  return (
+    <div className="mb-2 last:mb-0">
+      <div className="flex items-baseline justify-between mb-0.5">
+        <span className="text-[11px] font-semibold text-gray-600">{ex.property}</span>
+        <span className="text-[11px] font-mono text-gray-700 tabular-nums">
+          = {ex.total.toFixed(1)} <span className="text-[9px] text-gray-400">{ex.unit}</span>
+        </span>
+      </div>
+      {/* base */}
+      <div className="flex items-center gap-1.5 text-[10px] leading-tight py-px">
+        <span className="w-24 shrink-0 text-gray-500 truncate">{ex.property === 'HDT (1.8MPa)' ? '매트릭스 Tg' : ex.property === 'Izod 충격' ? '고무 기여(S커브)' : '베이스(AN)'}</span>
+        <div className="flex-1 h-2 bg-gray-100 rounded-sm overflow-hidden">
+          <div className="h-full bg-gray-400 rounded-sm" style={{ width: w(ex.base) }} />
+        </div>
+        <span className="w-12 shrink-0 text-right font-mono text-gray-600 tabular-nums">{ex.base.toFixed(1)}</span>
+      </div>
+      {/* contributions */}
+      {ex.contributions.map((c, i) => {
+        const pos = c.value >= 0
+        return (
+          <div key={i} className="flex items-center gap-1.5 text-[10px] leading-tight py-px">
+            <span className="w-24 shrink-0 text-gray-500 truncate" title={c.label}>{c.label}</span>
+            <div className="flex-1 h-2 bg-gray-100 rounded-sm overflow-hidden">
+              <div className="h-full rounded-sm" style={{ width: w(c.value), background: pos ? '#22c55e' : '#ef4444' }} />
+            </div>
+            <span className={`w-12 shrink-0 text-right font-mono tabular-nums ${pos ? 'text-green-600' : 'text-red-500'}`}>
+              {pos ? '+' : ''}{c.value.toFixed(1)}
+            </span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function PredictionExplain({ form }: { form: Formulation }) {
+  const [open, setOpen] = useState(false)
+  const ex = useMemo(() => explainPrediction(form), [form])
+  return (
+    <div className="mt-3 pt-2 border-t">
+      <button
+        className="text-xs font-semibold text-gray-500 hover:text-purple-600 transition-colors flex items-center gap-1"
+        onClick={() => setOpen(o => !o)}>
+        <span>{open ? '▾' : '▸'}</span> 근거 보기 (예측값 분해)
+      </button>
+      {open && (
+        <div className="mt-2 p-2 rounded bg-gray-50 border">
+          <p className="text-[10px] text-gray-400 mb-2">예측값이 어떤 배합 인자에서 비롯됐는지 분해해 보여줍니다 (근사 기여도).</p>
+          <ExplainBlock ex={ex.hdt} />
+          <ExplainBlock ex={ex.izod} />
+          <ExplainBlock ex={ex.tensile} />
+        </div>
+      )}
+    </div>
+  )
 }
 
 // ──────────────────────────────────────────────
@@ -1052,6 +1122,9 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
             </div>
             <MetricGauge label={SPEC.voc.label}  {...pred.voc}  unit={SPEC.voc.unit}  min={SPEC.voc.min}  max={SPEC.voc.max}  target={SPEC.voc.target}  higherIsBetter={false} />
             <MetricGauge label={SPEC.cost.label} {...pred.cost} unit={SPEC.cost.unit} min={SPEC.cost.min} max={SPEC.cost.max} higherIsBetter={false} />
+
+            {/* 근거 분해 */}
+            <PredictionExplain form={{ ...form, san: sanEst }} />
 
             {/* UL-94 */}
             <div className="flex items-center justify-between mt-1 pt-2 border-t">

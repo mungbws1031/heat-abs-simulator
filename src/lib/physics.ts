@@ -657,6 +657,206 @@ export function predictColdStart(f: Formulation): PredictionResult {
 }
 
 // ──────────────────────────────────────────────
+// 예측 근거 분해 (Explainability)
+// ──────────────────────────────────────────────
+// 각 물성의 예측값을 "base + 기여항들의 합" 형태로 분해한다.
+// • 가산항(예: GF 보강 +℃)은 식의 항을 그대로 라벨링한다.
+// • 곱셈항(예: ×환경계수, ×난연 녹다운)은 "그 계수를 빼면 값이 얼마나 달라지나"를
+//   기준으로 등가 가산 델타(value_with − value_without)로 변환해 합이 실제 .value와
+//   재정합되게 한다. 곱셈 체인은 순차적으로 누적 적용하며, 각 단계의 "현재 누적값"에
+//   계수를 곱한 차이를 그 항의 기여로 삼는다 → 모든 항을 더하면 최종값과 일치.
+export interface Contribution { label: string; value: number }
+export interface Explanation {
+  property: string
+  unit: string
+  base: number
+  contributions: Contribution[]
+  total: number
+}
+
+export function explainPrediction(f: Formulation): { hdt: Explanation; izod: Explanation; tensile: Explanation } {
+  // predictColdStart과 동일한 전처리 (필요한 부분만 복제)
+  const additiveWt = f.npmi + f.gAbs + f.cbMB
+    + f.ema + f.uhmwSr + f.phosphorusFr + f.talc + f.glassFiber
+    + f.pc + f.alphaMsan + f.nanoclay + f.mbs + f.sebs + f.acrylicIm
+    + f.ptfe + f.carbonFiber
+  const sanWt = Math.max(0, 100 - additiveWt)
+
+  const gAbsRubber  = f.gAbsRubber  ?? 50
+  const rubberPSize = f.rubberPSize ?? 0.3
+  const sanMw       = f.sanMw       ?? 100
+  const gelContent  = f.gelContent  ?? 75
+  const rubberContentFactor = gAbsRubber / 50
+  const impactEff = psizeEfficiency(rubberPSize) * gelEfficiency(gelContent)
+  const mwFactor = sanMw / 100
+
+  const pcMw        = f.pcMw        ?? 100
+  const alphaMsanMw = f.alphaMsanMw ?? 100
+  const pcMwF  = pcMw / 100
+
+  const ambientTemp   = f.ambientTemp   ?? 23
+  const humidity      = f.humidity      ?? 50
+  const materialDried = f.materialDried ?? true
+  const residualMoisture = materialDried ? 0.02 : (0.05 + (humidity / 100) * 0.45)
+  const moistureExcess = Math.max(0, residualMoisture - 0.05)
+  const pcAmp = 1 + (f.pc / 100) * 3
+  const moistureKnockdown = Math.max(0.6, 1 - moistureExcess * 0.25 * pcAmp)
+  const izodTempFactor = ambientTemp >= 23
+    ? 1 + (ambientTemp - 23) * 0.004
+    : Math.max(0.35, 1 - (23 - ambientTemp) * 0.008 - Math.max(0, (-10 - ambientTemp)) * 0.010)
+
+  const compoundingShear = f.compoundingShear ?? 'med'
+  const weldLinePresent  = f.weldLinePresent  ?? false
+  const fiberEff = compoundingShear === 'low' ? 1.08 : compoundingShear === 'high' ? 0.88 : 1.0
+  const fiberFrac = (f.glassFiber + f.carbonFiber) / 100
+  const weldKnock = weldLinePresent ? Math.max(0.3, 1 - (0.25 + fiberFrac * 1.5)) : 1.0
+
+  const rubberBimodal = f.rubberBimodal ?? 0
+  const graftRatio    = f.graftRatio    ?? 40
+  const annealed      = f.annealed      ?? false
+  const bimodalBonus = rubberBimodal > 0
+    ? 0.20 * Math.exp(-((rubberBimodal - 25) ** 2) / (2 * 15 ** 2)) : 0
+  const graftEff = Math.exp(-((graftRatio - 45) ** 2) / (2 * 18 ** 2))
+    / Math.exp(-((40 - 45) ** 2) / (2 * 18 ** 2))
+  const pcCompat = Math.exp(-((f.anContent - 25) ** 2) / (2 * 8 ** 2))
+
+  const tgMatrix = foxTg([
+    { w: f.npmi,       tg: Tg_NPMI },
+    { w: sanWt,        tg: sanTg(f.anContent) },
+    { w: f.alphaMsan,  tg: Tg_AMSAN },
+  ])
+  const rubberForHDT = f.gAbs * rubberContentFactor + f.uhmwSr * 0.5
+  const gAbsEff = f.gAbs * rubberContentFactor * impactEff
+
+  const MIN = 0.3  // |값| < 0.3 인 항은 생략
+
+  // ── 헬퍼: 곱셈계수를 누적값 기준 등가 가산 델타로 변환
+  const mulDelta = (running: { v: number }, factor: number, label: string, out: Contribution[]) => {
+    const before = running.v
+    running.v = running.v * factor
+    const d = running.v - before
+    if (Math.abs(d) >= MIN) out.push({ label, value: d })
+  }
+  const addTerm = (val: number, label: string, out: Contribution[]) => {
+    if (Math.abs(val) >= MIN) out.push({ label, value: val })
+  }
+
+  // ════════════ HDT ════════════
+  const hdtC: Contribution[] = []
+  const hdtBase = tgMatrix
+  {
+    const rubberPenalty = rubberForHDT * 0.45
+    const silaneMultiplier = f.silane >= 0.1 ? 1.3 : 1.0
+    const talcBoost = 7 * (1 - Math.exp(-f.talc / 14)) * (f.silane >= 0.1 ? 1.2 : 1.0)
+    const gfBoost   = 20 * (1 - Math.exp(-f.glassFiber / 25)) * silaneMultiplier * fiberEff
+    const cfBoost   = 30 * (1 - Math.exp(-f.carbonFiber / 21)) * fiberEff
+    const nanoclayBoost = Math.min(f.nanoclay, 5) * 1.3
+    const pcBoost = 52 * (1 - Math.exp(-f.pc / 33)) * pcCompat
+    const pcNpmiCorr = f.npmi * (f.pc / 100) * 4.6
+
+    addTerm(-17, '−Tg→HDT 오프셋(−17)', hdtC)
+    addTerm(-rubberPenalty, '−고무 패널티', hdtC)
+    addTerm(talcBoost, '+탈크', hdtC)
+    addTerm(gfBoost, '+GF 보강', hdtC)
+    addTerm(cfBoost, '+CF', hdtC)
+    addTerm(nanoclayBoost, '+나노클레이', hdtC)
+    addTerm(pcBoost, '+PC 상분리', hdtC)
+    addTerm(-pcNpmiCorr, '−PC·N-PMI 이중계상 보정', hdtC)
+    if (annealed) addTerm(5 + Math.min(f.pc, 40) * 0.1, '+어닐링', hdtC)
+  }
+  const hdtTotal = hdtBase + hdtC.reduce((s, c) => s + c.value, 0)
+
+  // ════════════ Izod ════════════
+  const izodC: Contribution[] = []
+  const izodBaseVal = 3 + 42 / (1 + Math.exp(-(gAbsEff - 16) / 7))
+  {
+    const r = { v: izodBaseVal }
+    // 가산형 취성/시너지는 izodFromRubber 내부 순서를 그대로 따른다.
+    const npmiPenalty = f.npmi * f.npmi * 0.0306 + f.alphaMsan * 0.40
+    // base - penalty (max 2 floor 무시: 정상범위)
+    addTerm(-npmiPenalty, '−N-PMI/αMSAN 취성', izodC); r.v = Math.max(2, r.v - npmiPenalty)
+    if (f.talc > 0) { const before = r.v; r.v = Math.max(2, r.v - 9 * (1 - Math.exp(-f.talc / 16))); addTerm(r.v - before, '−탈크 취성', izodC) }
+    if (f.phosphorusFr > 0) mulDelta(r, Math.max(0.35, 1 - (f.phosphorusFr / 25) * 0.6), '−인계FR', izodC)
+    if (f.uhmwSr > 0) mulDelta(r, 1 + (f.uhmwSr / 2) * 0.64, '+UHMW-SR', izodC)
+    if (f.ema > 0 && f.uhmwSr > 0) {
+      mulDelta(r, 1 + (Math.min(f.ema, 10) / 5) * (Math.min(f.uhmwSr, 4) / 2) * 1.48, '+EMA·UHMW 시너지', izodC)
+    } else if (f.ema > 0) {
+      mulDelta(r, 1 + (f.ema / 5) * 0.20, '+EMA', izodC)
+    }
+    { const before = r.v; r.v += f.mbs * 0.6 + f.sebs * 0.5 + f.acrylicIm * 0.35; addTerm(r.v - before, '+MBS/SEBS/아크릴', izodC) }
+    { const before = r.v; r.v += 33 * (1 - Math.exp(-f.pc / 18)) + 0.25 * f.pc; addTerm(r.v - before, '+PC 강인화', izodC) }
+    if (f.carbonFiber > 0) { const before = r.v; r.v = Math.max(2, r.v - f.carbonFiber * 0.3); addTerm(r.v - before, '−CF 취성', izodC) }
+    if (f.glassFiber > 0) { const before = r.v; r.v = Math.max(2, r.v - 3 * (1 - Math.exp(-f.glassFiber / 20))); addTerm(r.v - before, '−GF 취성', izodC) }
+    // 소프트 캡 + 100 캡
+    { const before = r.v; r.v = Math.min(Math.min(r.v, izodBaseVal * 3.5), 100); if (Math.abs(r.v - before) >= MIN) addTerm(r.v - before, '−상한 캡', izodC) }
+
+    // izodFinal 이후 곱셈 보정 체인 (predictColdStart과 동일 순서)
+    mulDelta(r, mwFactor ** 0.3, '×SAN분자량', izodC)
+    mulDelta(r, (1 - Math.min(f.nanoclay, 8) * 0.04), '−나노클레이 취성', izodC)
+    mulDelta(r, Math.pow(pcMwF, 0.4 * Math.min(f.pc / 40, 1)), '×PC분자량', izodC)
+    mulDelta(r, moistureKnockdown, '×수분 가수분해', izodC)
+    mulDelta(r, izodTempFactor, '×서비스온도', izodC)
+    mulDelta(r, (1 + 0.15 * (sanMw / 100 - 1)), '×고무-매트릭스', izodC)
+    const imTotal = f.ema + f.uhmwSr + f.mbs + f.sebs + f.acrylicIm
+    if (f.phosphorusFr > 0) mulDelta(r, (1 + Math.min(0.30, imTotal * 0.02) * Math.min(1, f.phosphorusFr / 10)), '×FR-IM 회복', izodC)
+    mulDelta(r, (1 + bimodalBonus), '×이중분포', izodC)
+    mulDelta(r, graftEff, '×그래프트율', izodC)
+    mulDelta(r, weldKnock, '×웰드라인', izodC)
+  }
+  const izodTotal = izodBaseVal + izodC.reduce((s, c) => s + c.value, 0)
+
+  // ════════════ Tensile ════════════
+  const tenC: Contribution[] = []
+  const tenBase = 42 + (f.anContent - 24) * 0.8
+  {
+    const rubberTot = f.gAbs + f.uhmwSr * 0.5 + f.mbs * 0.5 + f.sebs * 0.5 + f.acrylicIm * 0.5
+    const rubberPenalty = rubberTot * 0.20
+    const npmiEffect = f.npmi * 0.2
+    const silaneMultiplier = f.silane >= 0.1 ? 1.3 : 1.0
+    const gfEffect = 52 * (1 - Math.exp(-f.glassFiber / 25)) * silaneMultiplier * fiberEff
+    const cfEffect = 75 * (1 - Math.exp(-f.carbonFiber / 15)) * fiberEff
+    const talcEffect = 3 * (1 - Math.exp(-f.talc / 12)) * (f.silane >= 0.1 ? 1.2 : 1.0)
+    const nanoclayEffect = 6 * (1 - Math.exp(-Math.min(f.nanoclay, 8) / 4))
+    const pcEffect = f.pc * 0.25
+    const frEffect = -f.phosphorusFr * 0.10
+    const softEffect = -(f.ema * 0.8 + f.uhmwSr * 0.3)
+    const alphamsanEffect = f.alphaMsan * 0.15
+
+    addTerm(-rubberPenalty, '−고무', tenC)
+    addTerm(npmiEffect, '+N-PMI', tenC)
+    addTerm(gfEffect, '+GF', tenC)
+    addTerm(cfEffect, '+CF', tenC)
+    addTerm(talcEffect, '+탈크', tenC)
+    addTerm(nanoclayEffect, '+나노클레이', tenC)
+    addTerm(pcEffect, '+PC', tenC)
+    addTerm(frEffect, '−FR', tenC)
+    addTerm(softEffect, '−연질IM(EMA/UHMW)', tenC)
+    addTerm(alphamsanEffect, '+αMSAN', tenC)
+
+    // 베이스+가산항 = tensileStrength raw (min15/max100 클램프 반영)
+    const raw = Math.max(15, Math.min(100,
+      tenBase - rubberPenalty + npmiEffect + gfEffect + cfEffect + talcEffect
+      + nanoclayEffect + pcEffect + frEffect + softEffect + alphamsanEffect))
+    // 클램프로 합이 어긋나면 보정항으로 흡수
+    const sumSoFar = tenBase + tenC.reduce((s, c) => s + c.value, 0)
+    if (Math.abs(raw - sumSoFar) >= MIN) addTerm(raw - sumSoFar, '(상·하한 클램프)', tenC)
+
+    // predictColdStart 이후 곱셈 체인
+    const r = { v: raw }
+    mulDelta(r, (sanMw / 100) ** 0.2, '×SAN분자량', tenC)
+    mulDelta(r, moistureKnockdown, '×수분 가수분해', tenC)
+    mulDelta(r, weldKnock, '×웰드라인', tenC)
+  }
+  const tenTotal = tenBase + tenC.reduce((s, c) => s + c.value, 0)
+
+  return {
+    hdt:     { property: 'HDT (1.8MPa)', unit: '℃',     base: hdtBase,     contributions: hdtC,  total: hdtTotal },
+    izod:    { property: 'Izod 충격',     unit: 'kJ/m²', base: izodBaseVal, contributions: izodC, total: izodTotal },
+    tensile: { property: '인장강도',       unit: 'MPa',   base: tenBase,     contributions: tenC,  total: tenTotal },
+  }
+}
+
+// ──────────────────────────────────────────────
 // DOE 설계 생성
 // ──────────────────────────────────────────────
 export interface DOEFactor {
