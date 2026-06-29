@@ -201,18 +201,32 @@ function ul94Rating(pFr: number, ptfe: number): 'V-0' | 'V-2' | 'HB' | 'N/A' {
   return 'N/A'
 }
 
-// 원가 지수 (₩/kg, 단위 인덱스)
+// 원가 지수 (₩/kg, 단위 인덱스) — 사용자 편집 가능 단가 테이블
+export interface UnitCosts {
+  npmi:number; gAbs:number; ao:number; lub:number; ema:number; uhmwSr:number;
+  pFr:number; talc:number; gf:number; pc:number; alphaMsan:number; nanoclay:number;
+  mbs:number; sebs:number; acrylicIm:number; ptfe:number; cf:number;
+  silane:number; wax:number; hals:number; hs:number; md:number; as:number; base:number;
+}
+
+export const DEFAULT_UNIT_COSTS: UnitCosts = {
+  npmi: 1500, gAbs: 800, ao: 5000, lub: 3000,
+  ema: 2000, uhmwSr: 8000, pFr: 1200, talc: 300, gf: 1800,
+  pc: 4500, alphaMsan: 3500, nanoclay: 1800,
+  mbs: 5500, sebs: 4800, acrylicIm: 4000,
+  ptfe: 12000, cf: 25000,
+  silane: 8000, wax: 2500, hals: 15000,
+  hs: 8000, md: 30000, as: 5000,
+  base: 2500,
+}
+
+let activeUnitCosts: UnitCosts = { ...DEFAULT_UNIT_COSTS }
+export function setUnitCosts(c: UnitCosts) { activeUnitCosts = c }
+export function getUnitCosts(): UnitCosts { return activeUnitCosts }
+
 function costEstimate(f: Formulation): number {
-  const unit: Record<string, number> = {
-    npmi: 1500, gAbs: 800, ao: 5000, lub: 3000,
-    ema: 2000, uhmwSr: 8000, pFr: 1200, talc: 300, gf: 1800,
-    pc: 4500, alphaMsan: 3500, nanoclay: 1800,
-    mbs: 5500, sebs: 4800, acrylicIm: 4000,
-    ptfe: 12000, cf: 25000,
-    silane: 8000, wax: 2500, hals: 15000,
-    hs: 8000, md: 30000, as: 5000,
-  }
-  return 2500 + (
+  const unit = activeUnitCosts
+  return unit.base + (
     f.npmi * unit.npmi + f.gAbs * unit.gAbs + f.antioxidant * unit.ao * 10
     + f.lubricant * unit.lub * 10 + f.ema * unit.ema + f.uhmwSr * unit.uhmwSr
     + f.phosphorusFr * unit.pFr + f.talc * unit.talc + f.glassFiber * unit.gf

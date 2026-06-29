@@ -18,6 +18,9 @@ import {
   type PredictionResult,
   type SensProp,
   type DOERun,
+  setUnitCosts,
+  DEFAULT_UNIT_COSTS,
+  type UnitCosts,
 } from '@/lib/physics'
 import {
   runGridSearch,
@@ -576,12 +579,13 @@ function AutoSuggest({ pred, form, onApply }: {
 // ──────────────────────────────────────────────
 // M1 + M2: 배합 입력기 & 물성 예측기 (실시간)
 // ──────────────────────────────────────────────
-function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLoaded, calibResult }: {
+function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLoaded, calibResult, costVersion }: {
   records: ExperimentRecord[]
   onAddRecord: (r: ExperimentRecord) => void
   loadedFormulation: Formulation | null
   onFormulationLoaded: () => void
   calibResult: CalibResult | null
+  costVersion: number
 }) {
   const [form, setForm] = useState<Formulation>(DEFAULT_FORM)
   const [pred, setPred] = useState<PredictionResult>(() => predictColdStart(DEFAULT_FORM))
@@ -629,7 +633,7 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
     if (!compositionOk) return
     const rawPred = predictColdStart({ ...form, san: sanEst })
     setPred(calibResult ? applyCalibration(rawPred, calibResult) : rawPred)
-  }, [form, sanEst, compositionOk, calibResult])
+  }, [form, sanEst, compositionOk, calibResult, costVersion])
 
   const set = useCallback((key: keyof Formulation) => (v: number) => {
     setForm(f => ({ ...f, [key]: v }))
@@ -1517,19 +1521,122 @@ function DOETab() {
 // ──────────────────────────────────────────────
 // M4: 실험 트래커
 // ──────────────────────────────────────────────
-function TrackerTab({ records, onUpdateRecord }: {
+function TrackerTab({ records, onUpdateRecord, onBulkAdd }: {
   records: ExperimentRecord[]
   onUpdateRecord: (id: number, actual: ExperimentRecord['actual'], note: string) => void
+  onBulkAdd: (recs: ExperimentRecord[]) => void
 }) {
   const [editId, setEditId] = useState<number | null>(null)
   const [editActual, setEditActual] = useState<ExperimentRecord['actual']>({})
   const [editNote, setEditNote] = useState('')
+  const [importOpen, setImportOpen] = useState(false)
+  const [importText, setImportText] = useState('')
+  const [importMsg, setImportMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
+
+  const num = (s: string | undefined, fallback: number): number => {
+    if (s == null) return fallback
+    const v = parseFloat(s.trim())
+    return isNaN(v) ? fallback : v
+  }
+  const optNum = (s: string | undefined): number | undefined => {
+    if (s == null || s.trim() === '') return undefined
+    const v = parseFloat(s.trim())
+    return isNaN(v) ? undefined : v
+  }
+
+  const handleImport = () => {
+    const lines = importText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0)
+    if (lines.length === 0) { setImportMsg({ kind: 'err', text: '입력 데이터가 없습니다.' }); return }
+    const parseLine = (l: string) => l.includes('\t') ? l.split('\t') : l.split(',')
+    // 헤더 감지: 첫 행 2번째 셀이 숫자가 아니면 헤더로 보고 스킵
+    let dataLines = lines
+    const first = parseLine(lines[0])
+    if (first.length > 1 && isNaN(parseFloat(first[1]))) dataLines = lines.slice(1)
+
+    const recs: ExperimentRecord[] = []
+    dataLines.forEach((line, idx) => {
+      const c = parseLine(line).map(x => x.trim())
+      if (c.length < 11) return
+      const lot = c[0] || `가져오기-${idx + 1}`
+      const npmi = num(c[1], DEFAULT_FORM.npmi)
+      const gAbs = num(c[2], DEFAULT_FORM.gAbs)
+      const anContent = num(c[3], DEFAULT_FORM.anContent)
+      const injTemp = num(c[4], DEFAULT_FORM.injTemp)
+      const talc = num(c[5], DEFAULT_FORM.talc)
+      const glassFiber = num(c[6], DEFAULT_FORM.glassFiber)
+      const pc = num(c[7], DEFAULT_FORM.pc)
+      const phosphorusFr = num(c[8], DEFAULT_FORM.phosphorusFr)
+      const carbonFiber = num(c[9], DEFAULT_FORM.carbonFiber)
+      const nanoclay = num(c[10], DEFAULT_FORM.nanoclay)
+      // 17열 이상(전체 export): 예측 11~13 스킵, 실측 14,15,16
+      // 그 외(14열): 실측 11,12,13
+      const measHdt = c.length >= 17 ? optNum(c[14]) : optNum(c[11])
+      const measIzod = c.length >= 17 ? optNum(c[15]) : optNum(c[12])
+      const measVoc = c.length >= 17 ? optNum(c[16]) : optNum(c[13])
+      const formulation: Formulation = {
+        ...DEFAULT_FORM, npmi, gAbs, anContent, injTemp, talc, glassFiber, pc, phosphorusFr, carbonFiber, nanoclay,
+      }
+      const prediction = predictColdStart(formulation)
+      const actual = (measHdt != null || measIzod != null || measVoc != null)
+        ? { hdt: measHdt, izod: measIzod, voc: measVoc }
+        : undefined
+      recs.push({
+        id: Date.now() + idx,
+        lot,
+        formulation,
+        prediction,
+        actual,
+        date: new Date().toLocaleDateString('ko-KR'),
+        note: 'CSV 가져오기',
+      })
+    })
+
+    if (recs.length === 0) {
+      setImportMsg({ kind: 'err', text: '유효한 행을 찾지 못했습니다. 형식을 확인하세요.' })
+      return
+    }
+    onBulkAdd(recs)
+    setImportMsg({ kind: 'ok', text: `${recs.length}건 가져옴 — M5 캘리브레이션에서 사용 가능` })
+    setImportText('')
+    setImportOpen(false)
+  }
+
+  const ImportPanel = importOpen ? (
+    <div className="mb-3 border rounded p-3 bg-gray-50 space-y-2">
+      <p className="text-xs text-gray-600 font-medium">📋 일괄 가져오기 (Excel 탭/CSV 붙여넣기)</p>
+      <p className="text-[10px] text-gray-400 leading-relaxed">
+        14열 형식: LOT, N-PMI, g-ABS, AN, 사출온도, 탈크, GF, PC, 인계FR, CF, 나노클레이, 실측HDT, 실측Izod, 실측VOC<br />
+        (M4 내보내기 17열 형식도 자동 인식 · 헤더 행 자동 스킵 · 예측값은 재계산됨)
+      </p>
+      <textarea
+        value={importText} onChange={e => setImportText(e.target.value)}
+        rows={6} placeholder="LOT-1	17	28	28	250	0	0	0	0	0	0	118	14	45"
+        className="w-full text-xs font-mono border rounded p-2 focus:outline-none focus:ring-1 focus:ring-blue-400" />
+      <div className="flex gap-2">
+        <Button size="sm" onClick={handleImport} disabled={!importText.trim()}>가져오기 실행</Button>
+        <Button size="sm" variant="outline" onClick={() => { setImportOpen(false); setImportMsg(null) }}>취소</Button>
+      </div>
+    </div>
+  ) : null
 
   if (records.length === 0) {
     return (
       <Card>
-        <CardContent className="py-12 text-center text-gray-400 text-sm">
-          아직 저장된 배합이 없습니다. [물성 예측] 탭에서 트래커 저장 하세요.
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-end">
+            <button
+              className="text-xs px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:bg-gray-50"
+              onClick={() => setImportOpen(o => !o)}>
+              📋 일괄 가져오기
+            </button>
+          </div>
+        </CardHeader>
+        <CardContent className="text-center text-gray-400 text-sm">
+          {importMsg && (
+            <p className={`mb-3 text-xs ${importMsg.kind === 'ok' ? 'text-green-600' : 'text-red-500'}`}>{importMsg.text}</p>
+          )}
+          {ImportPanel}
+          <p className="py-8">아직 저장된 배합이 없습니다. [물성 예측] 탭에서 트래커 저장하거나 일괄 가져오기 하세요.</p>
         </CardContent>
       </Card>
     )
@@ -1540,6 +1647,12 @@ function TrackerTab({ records, onUpdateRecord }: {
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base">M4 — 실험 트래커 ({records.length}건)</CardTitle>
+          <div className="flex gap-2">
+          <button
+            className="text-xs px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:bg-gray-50"
+            onClick={() => setImportOpen(o => !o)}>
+            📋 일괄 가져오기
+          </button>
           <button
             className="text-xs px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:bg-gray-50"
             onClick={() => {
@@ -1560,10 +1673,15 @@ function TrackerTab({ records, onUpdateRecord }: {
             }}>
             📥 CSV 내보내기
           </button>
+          </div>
         </div>
         <p className="text-xs text-gray-500">실측 결과 입력 → 예측-실측 비교 자동 기록</p>
       </CardHeader>
       <CardContent>
+        {importMsg && (
+          <p className={`mb-2 text-xs ${importMsg.kind === 'ok' ? 'text-green-600' : 'text-red-500'}`}>{importMsg.text}</p>
+        )}
+        {ImportPanel}
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -1689,9 +1807,102 @@ function CalibStatRow({ label, unit, c }: {
   )
 }
 
+// ──────────────────────────────────────────────
+// 다음 실험 추천 (Active-learning lite, Feature C)
+// 거리 기반 휴리스틱: 기존 측정점에서 가장 먼 후보를 추천
+// ──────────────────────────────────────────────
+function ExperimentRecommender({ records, onLoad }: {
+  records: ExperimentRecord[]
+  onLoad: (f: Formulation) => void
+}) {
+  // 후보 풀: DEFAULT_FORM 기준 격자 섭동 (현재 form은 PredictorTab 내부에만 있어 DEFAULT_FORM 사용)
+  const base = DEFAULT_FORM
+  const candidates: Formulation[] = []
+  for (const npmi of [12, 16, 20, 24]) {
+    for (const gAbs of [24, 30, 36]) {
+      for (const talc of [0, 8]) {
+        for (const pc of [0, 10]) {
+          if (npmi + gAbs + talc + pc > 95) continue
+          candidates.push({ ...base, npmi, gAbs, talc, pc })
+          if (candidates.length >= 24) break
+        }
+        if (candidates.length >= 24) break
+      }
+      if (candidates.length >= 24) break
+    }
+    if (candidates.length >= 24) break
+  }
+
+  const scored = candidates.map(f => ({ f, pred: predictColdStart(f) }))
+
+  // 측정점: actual.hdt 존재
+  const measured = records
+    .filter(r => r.actual?.hdt != null)
+    .map(r => ({
+      hdt: r.actual!.hdt!,
+      izod: r.actual?.izod ?? r.prediction.izod.value,
+    }))
+
+  type Rec = { f: Formulation; pred: PredictionResult; reason: string }
+  let top3: Rec[]
+  let cornerMode = false
+
+  if (measured.length === 0) {
+    cornerMode = true
+    // 코너 우선: 최저HDT, 최고HDT, 최고Izod
+    const byHdtAsc = [...scored].sort((a, b) => a.pred.hdt.value - b.pred.hdt.value)
+    const byHdtDesc = [...scored].sort((a, b) => b.pred.hdt.value - a.pred.hdt.value)
+    const byIzodDesc = [...scored].sort((a, b) => b.pred.izod.value - a.pred.izod.value)
+    const picked: typeof scored = []
+    for (const c of [byHdtAsc[0], byHdtDesc[0], byIzodDesc[0]]) {
+      if (c && !picked.includes(c)) picked.push(c)
+    }
+    top3 = picked.slice(0, 3).map(c => ({ f: c.f, pred: c.pred, reason: '초기 데이터 확보: 설계공간 코너 우선' }))
+  } else {
+    const minDist = (p: PredictionResult) => Math.min(...measured.map(m =>
+      Math.sqrt(((p.hdt.value - m.hdt) / 40) ** 2 + ((p.izod.value - m.izod) / 20) ** 2)
+    ))
+    top3 = [...scored]
+      .map(c => ({ ...c, d: minDist(c.pred) }))
+      .sort((a, b) => b.d - a.d)
+      .slice(0, 3)
+      .map(c => ({ f: c.f, pred: c.pred, reason: '기존 측정점에서 가장 멀어 모델 불확실성을 크게 줄임' }))
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm">다음 실험 추천 <span className="text-[10px] font-normal text-gray-400">(거리 기반 휴리스틱)</span></CardTitle>
+      </CardHeader>
+      <CardContent className="pb-3 space-y-2">
+        <p className="text-[11px] text-gray-500">
+          {cornerMode
+            ? '측정 데이터가 없어 설계공간 코너를 우선 추천합니다.'
+            : `측정점 ${measured.length}개 기준, 미탐색 영역을 채우는 배합을 추천합니다.`}
+        </p>
+        {top3.map((rec, i) => (
+          <div key={i} className="border rounded p-2 text-xs space-y-1 bg-gray-50">
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-gray-700">
+                N-PMI {rec.f.npmi} · g-ABS {rec.f.gAbs} · 탈크 {rec.f.talc} · PC {rec.f.pc}
+              </span>
+              <Button size="sm" className="h-6 text-xs px-2" onClick={() => onLoad(rec.f)}>이 배합 로드</Button>
+            </div>
+            <div className="font-mono text-gray-500">
+              예측 HDT {rec.pred.hdt.value.toFixed(1)}℃ · Izod {rec.pred.izod.value.toFixed(1)} kJ/m²
+            </div>
+            <p className="text-[10px] text-gray-400">{rec.reason}</p>
+          </div>
+        ))}
+        <p className="text-[10px] text-gray-300">※ 완전한 베이지안 능동학습이 아닌 측정점 거리 기반 spread 휴리스틱입니다.</p>
+      </CardContent>
+    </Card>
+  )
+}
+
 function M5CalibrationTab({
   calibPoints, calibResult, records,
-  onAdd, onRemove, onFit, onToggle,
+  onAdd, onRemove, onFit, onToggle, onLoad,
 }: {
   calibPoints: CalibPoint[]
   calibResult: CalibResult | null
@@ -1700,6 +1911,7 @@ function M5CalibrationTab({
   onRemove: (id: number) => void
   onFit: () => void
   onToggle: () => void
+  onLoad: (f: Formulation) => void
 }) {
   const [lot, setLot] = useState('')
   const [npmi, setNpmi] = useState(17)
@@ -2011,6 +2223,8 @@ function M5CalibrationTab({
             <p className="text-gray-400">보정은 선형 최소제곱법 (y=ax+b). Cold-start 모델의 계통 오차를 실험 데이터로 보정합니다.</p>
           </CardContent>
         </Card>
+
+        <ExperimentRecommender records={records} onLoad={onLoad} />
       </div>
     </div>
   )
@@ -2115,6 +2329,52 @@ function CompareTab({ onLoad }: { onLoad: (f: Formulation) => void }) {
 }
 
 // ──────────────────────────────────────────────
+// 원료 단가 편집 모달 (Feature A)
+// ──────────────────────────────────────────────
+const UNIT_COST_LABELS: Record<keyof UnitCosts, string> = {
+  npmi: 'N-PMI', gAbs: 'g-ABS', ao: '산화방지제', lub: '활제', ema: 'EMA', uhmwSr: 'UHMW-SR',
+  pFr: '인계FR', talc: '탈크', gf: 'GF', pc: 'PC', alphaMsan: 'αMSAN', nanoclay: '나노클레이',
+  mbs: 'MBS', sebs: 'SEBS', acrylicIm: '아크릴IM', ptfe: 'PTFE', cf: 'CF',
+  silane: '실란', wax: '왁스', hals: 'HALS', hs: '열안정제', md: '금속불활성화제', as: '대전방지제',
+  base: '기본단가',
+}
+
+function UnitCostsModal({ costs, onChange, onClose }: {
+  costs: UnitCosts
+  onChange: (c: UnitCosts) => void
+  onClose: () => void
+}) {
+  const keys = Object.keys(UNIT_COST_LABELS) as (keyof UnitCosts)[]
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}>
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[85vh] overflow-auto p-5"
+        onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base font-bold">원료 단가 설정 <span className="text-xs font-normal text-gray-400">(₩/kg)</span></h2>
+          <button className="text-gray-400 hover:text-gray-700 text-xl leading-none" onClick={onClose}>×</button>
+        </div>
+        <p className="text-xs text-gray-500 mb-3">단가를 수정하면 원가 예측·파레토에 즉시 반영됩니다.</p>
+        <div className="grid grid-cols-3 gap-3">
+          {keys.map(k => (
+            <div key={k} className="flex flex-col gap-0.5">
+              <label className="text-[11px] text-gray-500 font-medium">{UNIT_COST_LABELS[k]}</label>
+              <input type="number" value={costs[k]}
+                onChange={e => onChange({ ...costs, [k]: +e.target.value })}
+                className="h-7 text-xs font-mono border rounded px-1.5 focus:outline-none focus:ring-1 focus:ring-blue-400" />
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2 mt-4 justify-end">
+          <Button size="sm" variant="outline" onClick={() => onChange({ ...DEFAULT_UNIT_COSTS })}>기본값 복원</Button>
+          <Button size="sm" onClick={onClose}>닫기</Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ──────────────────────────────────────────────
 // 메인 App
 // ──────────────────────────────────────────────
 export default function App() {
@@ -2123,6 +2383,27 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('predict')
   const [calibPoints, setCalibPoints] = useState<CalibPoint[]>([])
   const [calibResult, setCalibResult] = useState<CalibResult | null>(null)
+
+  // 원료 단가 (Feature A)
+  const [unitCosts, setUnitCostsState] = useState<UnitCosts>(() => {
+    try {
+      const saved = localStorage.getItem('abs_unit_costs')
+      return saved ? { ...DEFAULT_UNIT_COSTS, ...JSON.parse(saved) } : { ...DEFAULT_UNIT_COSTS }
+    } catch { return { ...DEFAULT_UNIT_COSTS } }
+  })
+  const [costVersion, setCostVersion] = useState(0)
+  const [costModalOpen, setCostModalOpen] = useState(false)
+
+  // 초기 1회 + 변경 시 active 테이블 동기화 + 재예측 트리거
+  useEffect(() => {
+    setUnitCosts(unitCosts)
+    setCostVersion(v => v + 1)
+  }, [unitCosts])
+
+  const handleChangeUnitCosts = useCallback((c: UnitCosts) => {
+    setUnitCostsState(c)
+    try { localStorage.setItem('abs_unit_costs', JSON.stringify(c)) } catch { /* ignore */ }
+  }, [])
 
   const handleAddCalibPoint = useCallback((p: CalibPoint) => {
     setCalibPoints(prev => [...prev, p])
@@ -2155,6 +2436,14 @@ export default function App() {
     setRecords(prev => [r, ...prev])
   }, [])
 
+  const handleBulkAddRecords = useCallback((recs: ExperimentRecord[]) => {
+    setRecords(prev => {
+      const baseId = Date.now()
+      const withIds = recs.map((r, i) => ({ ...r, id: baseId + i }))
+      return [...withIds, ...prev]
+    })
+  }, [])
+
   const handleUpdateRecord = useCallback((id: number, actual: ExperimentRecord['actual'], note: string) => {
     setRecords(prev => prev.map(r => r.id === id ? { ...r, actual, note } : r))
   }, [])
@@ -2170,7 +2459,12 @@ export default function App() {
         <div className="max-w-7xl mx-auto flex items-baseline gap-3">
           <h1 className="text-lg font-bold tracking-tight">내열 ABS 컴파운드 가상 실험 시뮬레이터</h1>
           <span className="text-xs text-gray-400">N-PMI 내열 ABS · 자동차 내장재 · HDT 115℃+ Track</span>
-          <span className="ml-auto"><Badge variant="secondary" className="text-xs">v1.1 — 실시간 예측</Badge></span>
+          <button
+            className="ml-auto text-xs px-2 py-1 rounded border border-gray-200 text-gray-600 hover:bg-gray-50"
+            onClick={() => setCostModalOpen(true)}>
+            ⚙ 단가 설정
+          </button>
+          <span><Badge variant="secondary" className="text-xs">v1.1 — 실시간 예측</Badge></span>
         </div>
         <div className="max-w-7xl mx-auto mt-0.5 flex gap-4 text-xs text-gray-500">
           <span>목표: HDT ≥ 115℃ · Izod ≥ 15 kJ/m² · TVOC ≤ 50 µg/g</span>
@@ -2204,6 +2498,7 @@ export default function App() {
               loadedFormulation={loadedFormulation}
               onFormulationLoaded={() => setLoadedFormulation(null)}
               calibResult={calibResult}
+              costVersion={costVersion}
             />
           </TabsContent>
           <TabsContent value="search">
@@ -2213,7 +2508,7 @@ export default function App() {
             <DOETab />
           </TabsContent>
           <TabsContent value="tracker">
-            <TrackerTab records={records} onUpdateRecord={handleUpdateRecord} />
+            <TrackerTab records={records} onUpdateRecord={handleUpdateRecord} onBulkAdd={handleBulkAddRecords} />
           </TabsContent>
           <TabsContent value="compare">
             <CompareTab onLoad={handleLoadFormulation} />
@@ -2227,10 +2522,19 @@ export default function App() {
               onRemove={handleRemoveCalibPoint}
               onFit={handleFitCalibration}
               onToggle={handleToggleCalibration}
+              onLoad={handleLoadFormulation}
             />
           </TabsContent>
         </Tabs>
       </div>
+
+      {costModalOpen && (
+        <UnitCostsModal
+          costs={unitCosts}
+          onChange={handleChangeUnitCosts}
+          onClose={() => setCostModalOpen(false)}
+        />
+      )}
 
       <div className="border-t bg-white mt-8 px-6 py-3 text-xs text-gray-400 max-w-7xl mx-auto">
         Cold-start 예측: Fox 식(Matrix Tg) + HDT-Tg 상관 + 고무-충격 경험 곡선.
