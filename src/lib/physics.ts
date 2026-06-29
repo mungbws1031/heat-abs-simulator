@@ -19,6 +19,12 @@ export interface Formulation {
   rubberPSize?: number   // 고무 평균 입경 μm (기준 0.3)
   sanMw?:       number   // SAN 분자량 지수 (기준 100)
   gelContent?:  number   // 고무 가교도(겔 함량) % (기준 75)
+  pcMw?:        number   // PC 분자량 지수 (기준 100)
+  alphaMsanMw?: number   // αMSAN 분자량 지수 (기준 100)
+  // ── 환경/공정 조건 (선택) — 표준 조건(23℃, 50%RH, 건조)에서 중립
+  ambientTemp?:   number // 외기/서비스 온도 ℃ (기준 23)
+  humidity?:      number // 상대습도 %RH (기준 50)
+  materialDried?: boolean // 건조 여부 (기준 true)
   // ── 기본 첨가제
   antioxidant:  number   // 산화방지제 phr
   lubricant:    number   // 활제 (EBS) phr
@@ -106,19 +112,20 @@ function hdtFromTg(
   talc: number, gf: number, nanoclay: number, cf: number,
   silane: number, pc: number
 ): number {
-  const rubberPenalty = rubberWt * 0.28
-  // 충전재 HDT 기여
+  const rubberPenalty = rubberWt * 0.45
+  // 충전재 HDT 기여 — 포화형(지수) 강화 (선형 무한증가 제거)
   const silaneMultiplier = silane >= 0.1 ? 1.3 : 1.0
-  const talcBoost = talc * 0.5 * (silane >= 0.1 ? 1.2 : 1.0)
-  // GF: 비정질 ABS계 실측 +0.6~0.75℃/wt% (반결정성과 다름) — 조태웅 검증
-  const gfBoost   = gf   * 0.75 * silaneMultiplier
-  // CF: GF 대비 ~1.4~1.5배, 비정질 계 기준 — 조태웅 검증
-  const cfBoost   = cf   * 1.4
-  // 나노클레이: 최대 5wt%에서 효과 포화 (MMT 층간 분산)
-  const nanoclayBoost = Math.min(nanoclay, 5) * 2.0
-  // PC 블렌드: 25wt% 초과 시 상분리(phase separation) 패널티 — 윤정민 검증
-  const pcPhasePenalty = pc > 25 ? (pc - 25) * 0.4 : 0
-  const pcBoost = pc * 0.05 - pcPhasePenalty
+  // 탈크: 소량 기여, plateau ~+7℃
+  const talcBoost = 7 * (1 - Math.exp(-talc / 14)) * (silane >= 0.1 ? 1.2 : 1.0)
+  // GF: ~0.8℃/wt% 초기, plateau ~+20℃ — 조태웅 검증
+  const gfBoost   = 20 * (1 - Math.exp(-gf / 25)) * silaneMultiplier
+  // CF: ~1.4℃/wt% 초기, plateau ~+30℃ — 조태웅 검증
+  const cfBoost   = 30 * (1 - Math.exp(-cf / 21))
+  // 나노클레이: 최대 5wt%에서 효과 포화 (MMT 층간 분산), cap ~+6.5℃
+  const nanoclayBoost = Math.min(nanoclay, 5) * 1.3
+  // PC 블렌드: 상 블렌드 기여 — PC 분율의 로지스틱(상반전 ~30-40%), pc=0에서 0
+  const pcVol = pc / 100
+  const pcBoost = 48 * (1 / (1 + Math.exp(-(pcVol - 0.30) / 0.10)) - 1 / (1 + Math.exp(0.30 / 0.10)))
   return tg - 17 - rubberPenalty + talcBoost + gfBoost + cfBoost + nanoclayBoost + pcBoost
 }
 
@@ -129,13 +136,14 @@ function izodFromRubber(
   mbs: number, sebs: number, acrylicIm: number,
   cf: number, pc: number
 ): number {
-  const base = 5 + rubberWt * 0.75
+  // 고무 기여: 로지스틱 S-curve (체감, plateau ~34, knee ~16wt%)
+  const base = 3 + 31 / (1 + Math.exp(-(rubberWt - 16) / 6))
   const npmiPenalty = npmiWt * 0.4
   let izod = Math.max(2, base - npmiPenalty)
 
-  // 인계 난연제 패널티: -88% @ 25wt% (PMC6401830)
+  // 인계 난연제 패널티: 완화 (PMC6401830)
   if (pFr > 0) {
-    izod *= Math.max(0.12, 1 - (pFr / 25) * 0.88)
+    izod *= Math.max(0.35, 1 - (pFr / 25) * 0.6)
   }
 
   // UHMW-SR: +64% @ 2wt% (PMC11013094)
@@ -158,6 +166,9 @@ function izodFromRubber(
   izod += pc * 0.3
   // CF: 취성화 경향 (-0.3 kJ/m² per wt%, notched Izod 기준)
   if (cf > 0) izod = Math.max(2, izod - cf * 0.3)
+
+  // 충격보강제 시너지 폭주 방지: 고무 base의 3.5배 소프트 캡
+  izod = Math.min(izod, base * 3.5)
 
   return Math.min(izod, 100)
 }
@@ -188,7 +199,8 @@ function vocEstimate(
   injTemp: number, rubber: number, ao: number, pFr: number,
   nanoclay: number, wax: number, antistatic: number, heatStabilizer: number
 ): number {
-  const tempEffect  = Math.max(0, (injTemp - 250) * 2)
+  // 온도 의존: 지수형 (250℃ 중립, 이상 급상승, 미만 완만 감소)
+  const tempEffect  = 16 * (Math.exp((injTemp - 250) / 24) - 1)
   const rubberEffect = rubber * 0.5
   // AO VOC 저감: 실측 3~8 µg/g @ 0.5phr — 박상현 검증 (-20 → -12)
   const aoEffect    = -ao * 12
@@ -202,16 +214,17 @@ function vocEstimate(
   // 열안정제: 분해 포착 → -2/phr
   const hsEffect    = -heatStabilizer * 2.0
   // base 50: 미처리 ABS 실측 기준 (VDA 278) — 박상현 검증 (30 → 50)
-  return Math.max(10, 50 + tempEffect + rubberEffect + aoEffect + frEffect
+  return Math.max(15, 50 + tempEffect + rubberEffect + aoEffect + frEffect
     + nanoclayEffect + waxEffect + asEffect + hsEffect)
 }
 
 // UL-94 — 인계 FR + PTFE anti-drip 보조
-function ul94Rating(pFr: number, ptfe: number): 'V-0' | 'V-2' | 'HB' | 'N/A' {
-  // PTFE ≥0.2wt% → V-0 임계 15wt%로 하향
-  const v0Threshold = ptfe >= 0.2 ? 15 : 20
+function ul94Rating(pFr: number, ptfe: number, pc: number): 'V-0' | 'V-2' | 'HB' | 'N/A' {
+  // PC 함유 시 난연 임계 하향(char 형성), 순수 ABS는 상향. PTFE anti-drip 보조.
+  const v0Threshold = pc >= 40 ? 10 : pc >= 20 ? 14 : (ptfe >= 0.2 ? 18 : 22)
+  const v2Threshold = pc >= 20 ? 8 : 12
   if (pFr >= v0Threshold) return 'V-0'
-  if (pFr >= 12) return 'V-2'
+  if (pFr >= v2Threshold) return 'V-2'
   if (pFr > 0) return 'HB'
   return 'N/A'
 }
@@ -229,7 +242,7 @@ export const DEFAULT_UNIT_COSTS: UnitCosts = {
   ema: 2000, uhmwSr: 8000, pFr: 1200, talc: 300, gf: 1800,
   pc: 4500, alphaMsan: 3500, nanoclay: 1800,
   mbs: 5500, sebs: 4800, acrylicIm: 4000,
-  ptfe: 12000, cf: 25000,
+  ptfe: 12000, cf: 45000,
   silane: 8000, wax: 2500, hals: 15000,
   hs: 8000, md: 30000, as: 5000,
   base: 2500,
@@ -255,7 +268,17 @@ function costEstimate(f: Formulation): number {
 }
 
 // 첨가제 인사이트 요약
-function buildSummary(f: Formulation, izodBase: number, izodFinal: number): string[] {
+interface EnvSummaryCtx {
+  residualMoisture: number
+  moistureExcess: number
+  moistureKnockdown: number
+  ambientTemp: number
+  izodTempFactor: number
+  pcMw: number
+  alphaMsanMw: number
+}
+
+function buildSummary(f: Formulation, izodBase: number, izodFinal: number, env?: EnvSummaryCtx): string[] {
   const msgs: string[] = []
 
   // 인계 FR
@@ -339,6 +362,27 @@ function buildSummary(f: Formulation, izodBase: number, izodFinal: number): stri
     msgs.push(`⚠ 사출온도 ${f.injTemp}℃ — 체류시간 최소화, N-PMI계 권장 260~280℃`)
   }
 
+  // PC 분자량 지수
+  if (env && f.pc > 0 && Math.abs(env.pcMw - 100) > 1) {
+    msgs.push(`ℹ PC 분자량지수 ${env.pcMw} — ${env.pcMw > 100 ? '점도↑·MFI↓·PC-ABS 인성↑' : '점도↓·MFI↑·인성↓'} (PC ${f.pc}wt% 가중)`)
+  }
+  if (env && f.alphaMsan > 0 && Math.abs(env.alphaMsanMw - 100) > 1) {
+    msgs.push(`ℹ αMSAN 분자량지수 ${env.alphaMsanMw} — ${env.alphaMsanMw > 100 ? '점도↑·MFI↓' : '점도↓·MFI↑'} (αMSAN ${f.alphaMsan}wt% 가중)`)
+  }
+
+  // 환경/공정 위험
+  if (env) {
+    if (env.moistureExcess > 0.1) {
+      msgs.push(`⚠ 미건조/고습 → 잔류수분 ${env.residualMoisture.toFixed(2)}% → 실버스트릭·스플레이 위험`)
+    }
+    if (env.moistureExcess > 0.2 && f.pc > 0) {
+      msgs.push(`❌ PC 함유 + 고수분 → 가수분해로 충격·인장 저하 (충격 ×${env.moistureKnockdown.toFixed(2)})`)
+    }
+    if (env.ambientTemp < 0) {
+      msgs.push(`ℹ 서비스 온도 ${env.ambientTemp}℃ → 저온 취성, 충격 ×${env.izodTempFactor.toFixed(2)} (기준 23℃ 대비)`)
+    }
+  }
+
   return msgs
 }
 
@@ -349,10 +393,10 @@ export function tensileStrength(f: Formulation, sanWt: number): number {
   const rubberPenalty = rubberTot * 0.35
   const npmiEffect = f.npmi * 0.2
   const silaneMultiplier = f.silane >= 0.1 ? 1.3 : 1.0
-  const gfEffect = f.glassFiber * 1.5 * silaneMultiplier
-  const cfEffect = f.carbonFiber * 3.0
-  const talcEffect = f.talc * 0.5 * (f.silane >= 0.1 ? 1.2 : 1.0)
-  const nanoclayEffect = Math.min(f.nanoclay, 5) * 1.0
+  const gfEffect = 35 * (1 - Math.exp(-f.glassFiber / 23)) * silaneMultiplier
+  const cfEffect = 55 * (1 - Math.exp(-f.carbonFiber / 18))
+  const talcEffect = 6 * (1 - Math.exp(-f.talc / 12)) * (f.silane >= 0.1 ? 1.2 : 1.0)
+  const nanoclayEffect = 6 * (1 - Math.exp(-Math.min(f.nanoclay, 8) / 4))
   const pcEffect = f.pc * 0.25
   const frEffect = -f.phosphorusFr * 0.35
   const softEffect = -(f.ema * 0.8 + f.uhmwSr * 0.3)
@@ -384,11 +428,12 @@ export function densityCalc(f: Formulation, sanWt: number): number {
     { w: f.antioxidant,  d: 1.050 },
     { w: f.lubricant,    d: 0.970 },
   ]
-  let totalW = 0, totalM = 0
+  // 역혼합법칙 (부피 기반): ρ_blend = ΣW / Σ(W/d)
+  let totalW = 0, totalVol = 0
   for (const { w, d } of parts) {
-    if (w > 0) { totalW += w; totalM += w * d }
+    if (w > 0) { totalW += w; totalVol += w / d }
   }
-  return totalW > 0 ? totalM / totalW : 1.06
+  return totalVol > 1e-9 ? totalW / totalVol : 1.06
 }
 
 // 세그먼트 분류 (v13 로직 준용)
@@ -423,11 +468,28 @@ export function predictColdStart(f: Formulation): PredictionResult {
   // SAN 분자량 배수 (기준 100)
   const mwFactor = sanMw / 100
 
-  // 매트릭스 Tg (Fox equation: 글라시 성분만)
+  // ── PC / αMSAN 분자량 지수 (기준 100, 함량 0이면 중립)
+  const pcMw        = f.pcMw        ?? 100
+  const alphaMsanMw = f.alphaMsanMw ?? 100
+  const pcMwF  = pcMw / 100
+  const amMwF  = alphaMsanMw / 100
+
+  // ── 환경/공정 조건 (표준: 23℃, 50%RH, 건조 → 모두 중립)
+  const ambientTemp   = f.ambientTemp   ?? 23
+  const humidity      = f.humidity      ?? 50
+  const materialDried = f.materialDried ?? true
+  const residualMoisture = materialDried ? 0.02 : (0.05 + (humidity / 100) * 0.45)
+  const moistureExcess = Math.max(0, residualMoisture - 0.05)
+  const pcAmp = 1 + (f.pc / 100) * 3
+  const moistureKnockdown = Math.max(0.6, 1 - moistureExcess * 0.25 * pcAmp)
+  const izodTempFactor = ambientTemp >= 23
+    ? 1 + (ambientTemp - 23) * 0.004
+    : Math.max(0.35, 1 - (23 - ambientTemp) * 0.008 - Math.max(0, (-10 - ambientTemp)) * 0.010)
+
+  // 매트릭스 Tg (Fox equation: 미시블 SAN상만 — PC는 비미시블이라 제외)
   const tgMatrix = foxTg([
     { w: f.npmi,       tg: Tg_NPMI },
     { w: sanWt,        tg: sanTg(f.anContent) },
-    { w: f.pc,         tg: Tg_PC },
     { w: f.alphaMsan,  tg: Tg_AMSAN },
   ])
 
@@ -437,9 +499,9 @@ export function predictColdStart(f: Formulation): PredictionResult {
   const rubberForIzod = f.gAbs + f.mbs * 0.6 + f.sebs * 0.6 + f.acrylicIm * 0.5 + f.uhmwSr
 
   const hdtVal  = hdtFromTg(tgMatrix, rubberForHDT, f.talc, f.glassFiber, f.nanoclay, f.carbonFiber, f.silane, f.pc)
-  // Vicat: GF/CF 고함량에서 HDT-Vicat 간격 축소 (충전재는 Tg 자체를 올리지 않음)
-  const vicatOffset = Math.max(4, 8 - f.glassFiber * 0.1 - f.carbonFiber * 0.15)
-  const vicatVal = hdtVal + vicatOffset
+  // Vicat: Tg로부터 독립 산정 (비정질 Vicat B50 ≈ Tg − ~6℃), 물리적으로 항상 ≥ HDT
+  let vicatVal = tgMatrix - 6 - rubberForHDT * 0.15
+  vicatVal = Math.max(vicatVal, hdtVal + 4)
 
   // 실효 g-ABS (고무함량 × 충격효율) — 기준값에서 f.gAbs 그대로
   const gAbsEff = f.gAbs * rubberContentFactor * impactEff
@@ -447,21 +509,37 @@ export function predictColdStart(f: Formulation): PredictionResult {
   let izodFinal   = izodFromRubber(gAbsEff, f.npmi, f.ema, f.uhmwSr, f.phosphorusFr, f.mbs, f.sebs, f.acrylicIm, f.carbonFiber, f.pc)
   // SAN 분자량 매트릭스 인성 (기준 100 → ×1)
   izodFinal *= mwFactor ** 0.3
+  // 나노클레이 취성화 (−4%/wt%, cap 8wt%, nanoclay=0 중립)
+  izodFinal *= (1 - Math.min(f.nanoclay, 8) * 0.04)
+  // 고분자량 PC → PC-ABS 인성↑ (PC 함량 가중, cap pc/40)
+  izodFinal *= Math.pow(pcMwF, 0.4 * Math.min(f.pc / 40, 1))
+  // 환경: 수분 가수분해 + 서비스/시험 온도
+  izodFinal *= moistureKnockdown * izodTempFactor
 
   let mfiVal = mfiEstimate(f.npmi, rubberForIzod, f.lubricant, f.injTemp, f.glassFiber, f.talc, f.ema, f.pc, f.nanoclay, f.carbonFiber, f.mbs, f.sebs, f.wax)
-  // SAN 분자량↑ → 점도↑ → MFI↓ (기준 100 → ×1). mi200/mi250 파생 전에 적용.
+  // SAN 분자량↑ → 점도↑ → MFI↓ (기준 100 → ×1)
   mfiVal *= (1 / mwFactor) ** 1.5
-  const vocVal = vocEstimate(f.injTemp, f.gAbs, f.antioxidant, f.phosphorusFr, f.nanoclay, f.wax, f.antistatic, f.heatStabilizer)
+  // 고분자량 PC/αMSAN → 점도↑ → MFI↓ (함량 가중, 함량 0이면 중립)
+  const flowMwAdj = Math.pow(1 / pcMwF, 1.0 * (f.pc / 100)) * Math.pow(1 / amMwF, 0.8 * (f.alphaMsan / 100))
+  mfiVal *= flowMwAdj
+  let vocVal = vocEstimate(f.injTemp, f.gAbs, f.antioxidant, f.phosphorusFr, f.nanoclay, f.wax, f.antistatic, f.heatStabilizer)
+  // 미건조/고습 → 잔류수분 휘발분 추가
+  vocVal += moistureExcess * 20
   const costVal = costEstimate(f)
-  const ul94 = ul94Rating(f.phosphorusFr, f.ptfe)
+  const ul94 = ul94Rating(f.phosphorusFr, f.ptfe, f.pc)
 
   const err = (v: number, pct: number) => ({ value: v, low: v * (1 - pct), high: v * (1 + pct) })
 
-  const tensileVal = tensileStrength(f, sanWt) * (sanMw / 100) ** 0.2
+  const tensileVal = tensileStrength(f, sanWt) * (sanMw / 100) ** 0.2 * moistureKnockdown
   const densityVal = densityCalc(f, sanWt)
-  const mi200Val   = mfiVal * 0.91
-  const mi250_2Val = mfiVal * 0.82
-  const mi250_5Val = mfiVal * 1.43
+  // MI 4조건: Arrhenius(온도) + power-law(하중). mfiVal(220℃/10kg) 기준, 모든 흐름 보정 후 파생.
+  // Ea=120 kJ/mol (ABS 실측), 하중 지수 1.3 (전단박화 반영) — v13 실측(1,744 exp) ordering 일치
+  const _Ea = 120000, _R = 8.314
+  const _tempF = (T: number) => Math.exp(_Ea / _R * (1 / 493.15 - 1 / (T + 273.15)))
+  const _loadF = (L: number) => Math.pow(L / 10, 1.3)
+  const mi200Val   = mfiVal * _tempF(200) * _loadF(21.6)
+  const mi250_2Val = mfiVal * _tempF(250) * _loadF(2.16)
+  const mi250_5Val = mfiVal * _tempF(250) * _loadF(5)
   const segment    = classifySegment(f)
 
   // HDT @ 0.45 MPa: 저하중 조건 — 경험식 hdt045 ≈ hdt_1.8 + 15℃ (GF/탈크 고함량은 차이 축소)
@@ -488,7 +566,10 @@ export function predictColdStart(f: Formulation): PredictionResult {
       voc:  vocVal   <= 50  ? true : vocVal   <= 70  ? null : false,
     },
     confidence: 'cold',
-    additiveSummary: buildSummary(f, izodBase, izodFinal),
+    additiveSummary: buildSummary(f, izodBase, izodFinal, {
+      residualMoisture, moistureExcess, moistureKnockdown,
+      ambientTemp, izodTempFactor, pcMw, alphaMsanMw,
+    }),
   }
 }
 

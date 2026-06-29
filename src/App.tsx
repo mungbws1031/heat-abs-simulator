@@ -79,6 +79,9 @@ const DEFAULT_FORM: Formulation = {
   cbMB: 2.5,
   // 미세구조 (고급) — 기본값에서 효과 중립
   gAbsRubber: 50, rubberPSize: 0.3, sanMw: 100, gelContent: 75,
+  pcMw: 100, alphaMsanMw: 100,
+  // 환경/공정 조건 — 표준에서 중립
+  ambientTemp: 23, humidity: 50, materialDried: true,
   antioxidant: 0.5, lubricant: 1.0,
   injTemp: 250, moldTemp: 70,
   // 매트릭스 개질
@@ -416,7 +419,7 @@ function ValidationChecks({ pred }: { pred: PredictionResult }) {
     checks.push(check('bad', 'VICAT-HDT 관계', `편차 ${vicDev >= 0 ? '+' : ''}${vicDev.toFixed(1)}℃ — 비정상 편차 (실측 필요)`))
   }
 
-  // 검증3: MI 하중-순서 250℃ (5kg > 2.16kg)
+  // 검증3: MI 하중-순서 250℃ (5kg > 2.16kg) — Power-Law상 항상 성립
   if (mi250_5 >= mi250_2 * 1.05) {
     checks.push(check('ok', 'MI 하중-순서 (250℃)', `MI(5kg) ${mi250_5.toFixed(1)} > MI(2.16kg) ${mi250_2.toFixed(1)} — Power-Law 정상`))
   } else if (mi250_5 >= mi250_2 * 0.95) {
@@ -425,11 +428,11 @@ function ValidationChecks({ pred }: { pred: PredictionResult }) {
     checks.push(check('bad', 'MI 하중-순서 (250℃)', `MI(5kg) ${mi250_5.toFixed(1)} < MI(2.16kg) ${mi250_2.toFixed(1)} — 물리법칙 위반`))
   }
 
-  // 검증4: MI 온도-순서
-  if (mi250_5 > mi220 && mi220 > mi200) {
-    checks.push(check('ok', 'MI 온도-순서', `250·5 > 220·10 > 200·21.6: ${mi250_5.toFixed(1)} > ${mi220.toFixed(1)} > ${mi200.toFixed(1)}`))
+  // 검증4: MI 조건별 순서 — v13 실측 chain: 250/5 > 220/10 > 200/21.6 (+ 250℃ 하중순서)
+  if (mi250_5 > mi220 && mi220 > mi200 && mi250_5 > mi250_2) {
+    checks.push(check('ok', 'MI 조건별 순서', `250/5 > 220/10 > 200/21.6: ${mi250_5.toFixed(1)} > ${mi220.toFixed(1)} > ${mi200.toFixed(1)} (실측 v13 일치)`))
   } else {
-    checks.push(check('warn', 'MI 온도-순서', `예측: 250·5=${mi250_5.toFixed(1)}, 220·10=${mi220.toFixed(1)}, 200·21.6=${mi200.toFixed(1)} — 비전형 순서`))
+    checks.push(check('warn', 'MI 조건별 순서', `250/5=${mi250_5.toFixed(1)}, 220/10=${mi220.toFixed(1)}, 200/21.6=${mi200.toFixed(1)}, 250/2.16=${mi250_2.toFixed(1)} — 비전형 순서`))
   }
 
   // 검증5: 트레이드오프 — 충격·내열·인장·MI 동시 최상
@@ -726,6 +729,31 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
           <SliderRow label="고무 평균입경"   value={form.rubberPSize ?? 0.3} min={0.05} max={1.0} step={0.05} unit="μm" onChange={set('rubberPSize')} highlight={changedKey==='rubberPSize'} />
           <SliderRow label="SAN 분자량지수"  value={form.sanMw ?? 100}      min={60}  max={160} step={5}    unit=""   onChange={set('sanMw')}       highlight={changedKey==='sanMw'} />
           <SliderRow label="고무 가교도(겔)" value={form.gelContent ?? 75}  min={40}  max={90}  step={1}    unit="%"  onChange={set('gelContent')}  highlight={changedKey==='gelContent'} />
+          <SliderRow label="PC 분자량지수"   value={form.pcMw ?? 100}       min={70}  max={140} step={5}    unit=""   onChange={set('pcMw')}        highlight={changedKey==='pcMw'} />
+          <SliderRow label="αMSAN 분자량지수" value={form.alphaMsanMw ?? 100} min={70} max={140} step={5}    unit=""   onChange={set('alphaMsanMw')} highlight={changedKey==='alphaMsanMw'} />
+
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide py-2">── 환경/공정 조건</p>
+          <SliderRow label="외기/서비스 온도" value={form.ambientTemp ?? 23} min={-40} max={60} step={1} unit="℃"
+            onChange={set('ambientTemp')} highlight={changedKey==='ambientTemp'}
+            warn={(form.ambientTemp ?? 23) < 0 ? '저온 취성 → 충격 저하 (자동차 -30℃ 요구 반영)' : undefined} />
+          <SliderRow label="상대습도" value={form.humidity ?? 50} min={10} max={95} step={5} unit="%RH"
+            onChange={set('humidity')} highlight={changedKey==='humidity'} />
+          <div className="grid grid-cols-[160px_1fr] items-center gap-3 py-1.5 px-2">
+            <Label className="text-sm">건조 여부</Label>
+            <div className="flex gap-1 items-center">
+              {[
+                { v: true,  l: '건조함' },
+                { v: false, l: '미건조' },
+              ].map(({ v, l }) => (
+                <button key={l}
+                  className={`px-3 py-1 text-xs rounded border transition-colors ${(form.materialDried ?? true) === v ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400'}`}
+                  onClick={() => setForm(f => ({ ...f, materialDried: v }))}>
+                  {l}
+                </button>
+              ))}
+              <span className="text-[10px] text-gray-400 ml-1">건조 시 습도 영향 최소</span>
+            </div>
+          </div>
 
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide py-2">── 첨가제</p>
           <SliderRow label="산화방지제"   value={form.antioxidant} min={0.3} max={0.8} step={0.05} unit="phr" onChange={set('antioxidant')} highlight={changedKey==='antioxidant'} />
@@ -862,6 +890,12 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
                   style={{ background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0' }}>
                   {pred.segment}
                 </span>
+                {((!(form.materialDried ?? true) && (form.humidity ?? 50) >= 70) || (form.ambientTemp ?? 23) < 0) && (
+                  <span className="text-xs px-2 py-0.5 rounded font-medium"
+                    style={{ background: '#fef3c7', color: '#b45309', border: '1px solid #f59e0b' }}>
+                    ⚠ 환경 영향
+                  </span>
+                )}
                 {calibResult?.active
                   ? <Badge className="text-xs bg-green-600 text-white border-0">M5 보정 적용 중</Badge>
                   : <Badge variant="outline" className="text-xs">Cold-start</Badge>}
