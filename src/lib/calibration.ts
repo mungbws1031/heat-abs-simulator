@@ -15,13 +15,26 @@ export interface CalibProps {
   xMax:   number  // 피팅에 사용된 예측값 최대
 }
 
+// 한 세그먼트(또는 전역)에서의 프로퍼티별 fit 묶음
+export interface SegmentCalib {
+  hdt:     CalibProps
+  izod:    CalibProps
+  voc:     CalibProps
+  tensile: CalibProps
+  mfi:     CalibProps
+  vicat:   CalibProps
+}
+
 export interface CalibResult {
   active: boolean
   mode: 'global' | 'segment'   // 세그먼트별 보정 가용/사용 여부
-  hdt:   CalibProps   // GLOBAL fit (fallback)
-  izod:  CalibProps
-  voc:   CalibProps
-  bySegment: Record<string, { hdt: CalibProps; izod: CalibProps; voc: CalibProps }>  // per-segment fits
+  hdt:     CalibProps   // GLOBAL fit (fallback)
+  izod:    CalibProps
+  voc:     CalibProps
+  tensile: CalibProps
+  mfi:     CalibProps
+  vicat:   CalibProps
+  bySegment: Record<string, SegmentCalib>  // per-segment fits
 }
 
 const IDENTITY_PROPS: CalibProps = { scale: 1, offset: 0, r2: NaN, rmse: NaN, n: 0, xMin: NaN, xMax: NaN }
@@ -29,9 +42,12 @@ const IDENTITY_PROPS: CalibProps = { scale: 1, offset: 0, r2: NaN, rmse: NaN, n:
 export const IDENTITY_CALIB: CalibResult = {
   active: false,
   mode: 'global',
-  hdt:   { ...IDENTITY_PROPS },
-  izod:  { ...IDENTITY_PROPS },
-  voc:   { ...IDENTITY_PROPS },
+  hdt:     { ...IDENTITY_PROPS },
+  izod:    { ...IDENTITY_PROPS },
+  voc:     { ...IDENTITY_PROPS },
+  tensile: { ...IDENTITY_PROPS },
+  mfi:     { ...IDENTITY_PROPS },
+  vicat:   { ...IDENTITY_PROPS },
   bySegment: {},
 }
 
@@ -75,22 +91,34 @@ function lsq(preds: number[], meas: number[]): CalibProps {
 
 export interface CalibPair {
   segment?: string
-  predictedHdt:  number
-  predictedIzod: number
-  predictedVoc:  number
-  measuredHdt?:  number
-  measuredIzod?: number
-  measuredVoc?:  number
+  predictedHdt:      number
+  predictedIzod:     number
+  predictedVoc:      number
+  predictedTensile?: number
+  predictedMfi?:     number
+  predictedVicat?:   number
+  measuredHdt?:      number
+  measuredIzod?:     number
+  measuredVoc?:      number
+  measuredTensile?:  number
+  measuredMfi?:      number
+  measuredVicat?:    number
 }
 
-function fitGroup(points: CalibPair[]): { hdt: CalibProps; izod: CalibProps; voc: CalibProps } {
-  const hdtPts  = points.filter(p => p.measuredHdt  != null)
-  const izodPts = points.filter(p => p.measuredIzod != null)
-  const vocPts  = points.filter(p => p.measuredVoc  != null)
+function fitGroup(points: CalibPair[]): SegmentCalib {
+  const hdtPts     = points.filter(p => p.measuredHdt     != null)
+  const izodPts    = points.filter(p => p.measuredIzod    != null)
+  const vocPts     = points.filter(p => p.measuredVoc     != null)
+  const tensilePts = points.filter(p => p.measuredTensile != null && p.predictedTensile != null)
+  const mfiPts     = points.filter(p => p.measuredMfi     != null && p.predictedMfi     != null)
+  const vicatPts   = points.filter(p => p.measuredVicat   != null && p.predictedVicat   != null)
   return {
-    hdt:   lsq(hdtPts.map(p  => p.predictedHdt),   hdtPts.map(p  => p.measuredHdt!)),
-    izod:  lsq(izodPts.map(p => p.predictedIzod),  izodPts.map(p => p.measuredIzod!)),
-    voc:   lsq(vocPts.map(p  => p.predictedVoc),   vocPts.map(p  => p.measuredVoc!)),
+    hdt:     lsq(hdtPts.map(p     => p.predictedHdt),      hdtPts.map(p     => p.measuredHdt!)),
+    izod:    lsq(izodPts.map(p    => p.predictedIzod),     izodPts.map(p    => p.measuredIzod!)),
+    voc:     lsq(vocPts.map(p     => p.predictedVoc),      vocPts.map(p     => p.measuredVoc!)),
+    tensile: lsq(tensilePts.map(p => p.predictedTensile!), tensilePts.map(p => p.measuredTensile!)),
+    mfi:     lsq(mfiPts.map(p     => p.predictedMfi!),     mfiPts.map(p     => p.measuredMfi!)),
+    vicat:   lsq(vicatPts.map(p   => p.predictedVicat!),   vicatPts.map(p   => p.measuredVicat!)),
   }
 }
 
@@ -105,22 +133,30 @@ export function fitCalibration(points: CalibPair[]): CalibResult {
     ;(groups[seg] ??= []).push(p)
   }
 
-  const bySegment: Record<string, { hdt: CalibProps; izod: CalibProps; voc: CalibProps }> = {}
+  const bySegment: Record<string, SegmentCalib> = {}
   let anySegmentFit = false
   for (const seg of Object.keys(groups)) {
     const fit = fitGroup(groups[seg])
     bySegment[seg] = fit
-    if (fit.hdt.n >= 2 || fit.izod.n >= 2 || fit.voc.n >= 2) anySegmentFit = true
+    if (fit.hdt.n >= 2 || fit.izod.n >= 2 || fit.voc.n >= 2
+      || fit.tensile.n >= 2 || fit.mfi.n >= 2 || fit.vicat.n >= 2) anySegmentFit = true
   }
 
   // mode='segment' if at least one segment group has ≥2 points for at least one property
   const mode: 'global' | 'segment' = anySegmentFit ? 'segment' : 'global'
 
-  return { active: true, mode, hdt: global.hdt, izod: global.izod, voc: global.voc, bySegment }
+  return {
+    active: true, mode,
+    hdt: global.hdt, izod: global.izod, voc: global.voc,
+    tensile: global.tensile, mfi: global.mfi, vicat: global.vicat,
+    bySegment,
+  }
 }
 
+type CalibProp = 'hdt' | 'izod' | 'voc' | 'tensile' | 'mfi' | 'vicat'
+
 // 프로퍼티별로 사용할 fit 선택: 세그먼트 fit(n≥2) 우선, 없으면 전역(n≥2), 둘 다 없으면 null
-function pickFit(cal: CalibResult, segment: string, prop: 'hdt' | 'izod' | 'voc'): CalibProps | null {
+function pickFit(cal: CalibResult, segment: string, prop: CalibProp): CalibProps | null {
   const segFit = cal.bySegment[segment]?.[prop]
   if (segFit && segFit.n >= 2) return segFit
   const glob = cal[prop]
@@ -145,8 +181,8 @@ export function applyCalibration(
 ): PredictionResult {
   if (!cal?.active) return pred
 
-  const props: Array<'hdt' | 'izod' | 'voc'> = ['hdt', 'izod', 'voc']
-  const adjusted: Partial<Record<'hdt' | 'izod' | 'voc', { value: number; low: number; high: number }>> = {}
+  const props: CalibProp[] = ['hdt', 'izod', 'voc', 'tensile', 'mfi', 'vicat']
+  const adjusted: Partial<Record<CalibProp, { value: number; low: number; high: number }>> = {}
   const usedConfs: PredictionResult['confidence'][] = []
 
   for (const prop of props) {
@@ -166,9 +202,33 @@ export function applyCalibration(
     usedConfs.push(fitConfidence(c))
   }
 
-  const hdtAdj  = adjusted.hdt  ?? pred.hdt
-  const izodAdj = adjusted.izod ?? pred.izod
-  const vocAdj  = adjusted.voc  ?? pred.voc
+  const hdtAdj     = adjusted.hdt     ?? pred.hdt
+  const izodAdj    = adjusted.izod    ?? pred.izod
+  const vocAdj     = adjusted.voc     ?? pred.voc
+  const tensileAdj = adjusted.tensile ?? pred.tensile
+  const mfiAdj     = adjusted.mfi     ?? pred.mfi
+  let   vicatAdj   = adjusted.vicat   ?? pred.vicat
+
+  // MFI 보정 시 의존 조건(mi200/mi250_2/mi250_5)을 동일 비율로 재파생 → 4조건 순서 유지
+  let mi200Adj   = pred.mi200
+  let mi250_2Adj = pred.mi250_2
+  let mi250_5Adj = pred.mi250_5
+  if (adjusted.mfi) {
+    const rawMfi = pred.mfi.value
+    const ratio = rawMfi > 1e-9 ? mfiAdj.value / rawMfi : 1
+    const scaleM = (m: { value: number; low: number; high: number }) =>
+      ({ value: m.value * ratio, low: m.low * ratio, high: m.high * ratio })
+    mi200Adj   = scaleM(pred.mi200)
+    mi250_2Adj = scaleM(pred.mi250_2)
+    mi250_5Adj = scaleM(pred.mi250_5)
+  }
+
+  // Vicat ≥ HDT 물리 플로어 유지: 보정 후 vicat < hdt면 hdt+4로 보정
+  if (vicatAdj.value < hdtAdj.value) {
+    const v = hdtAdj.value + 4
+    const unc = vicatAdj.high - vicatAdj.value
+    vicatAdj = { value: v, low: v - unc, high: v + unc }
+  }
 
   // 보정에 실제 사용된 프로퍼티들의 최소 신뢰도 (보수적). 아무것도 보정 안 되면 기존 유지.
   let confidence = pred.confidence
@@ -178,9 +238,15 @@ export function applyCalibration(
 
   return {
     ...pred,
-    hdt:  hdtAdj,
-    izod: izodAdj,
-    voc:  vocAdj,
+    hdt:     hdtAdj,
+    izod:    izodAdj,
+    voc:     vocAdj,
+    tensile: tensileAdj,
+    mfi:     mfiAdj,
+    mi200:   mi200Adj,
+    mi250_2: mi250_2Adj,
+    mi250_5: mi250_5Adj,
+    vicat:   vicatAdj,
     specPass: {
       hdt:  hdtAdj.value  >= 115 ? true : hdtAdj.value  >= 110 ? null : false,
       izod: izodAdj.value >= 15  ? true : izodAdj.value >= 10  ? null : false,

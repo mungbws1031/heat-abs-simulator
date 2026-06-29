@@ -178,8 +178,14 @@ export function referenceCalibPairs(
       predictedHdt: r.hdt.value,
       predictedIzod: r.izod.value,
       predictedVoc: r.voc.value,
+      predictedTensile: r.tensile.value,
+      predictedMfi: r.mfi.value,
+      predictedVicat: r.vicat.value,
       measuredHdt: grade.ref.hdt,
       measuredIzod: grade.ref.izod,
+      measuredTensile: grade.ref.tensile,
+      measuredMfi: grade.ref.mfi,
+      measuredVicat: grade.ref.vicat,
       // voc: ref 없음 → 생략
     }
   })

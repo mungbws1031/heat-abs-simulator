@@ -56,7 +56,9 @@ interface CalibPoint {
   carbonFiber: number; nanoclay: number
   segment: string
   predictedHdt: number; predictedIzod: number; predictedVoc: number
+  predictedTensile: number; predictedMfi: number; predictedVicat: number
   measuredHdt?: number; measuredIzod?: number; measuredVoc?: number
+  measuredTensile?: number; measuredMfi?: number; measuredVicat?: number
 }
 
 interface ExperimentRecord {
@@ -2085,8 +2087,12 @@ function M5CalibrationTab({
   const [mHdt, setMHdt] = useState('')
   const [mIzod, setMIzod] = useState('')
   const [mVoc, setMVoc] = useState('')
+  const [mTensile, setMTensile] = useState('')
+  const [mMfi, setMMfi] = useState('')
+  const [mVicat, setMVicat] = useState('')
 
   const addDisabled = mHdt === '' && mIzod === '' && mVoc === ''
+    && mTensile === '' && mMfi === '' && mVicat === ''
 
   const handleAdd = () => {
     const san = Math.max(0, 100 - npmi - gAbs - 2.5 - pc - nanoclay - talc - glassFiber - carbonFiber - phosphorusFr)
@@ -2108,12 +2114,19 @@ function M5CalibrationTab({
       predictedHdt:  raw.hdt.value,
       predictedIzod: raw.izod.value,
       predictedVoc:  raw.voc.value,
+      predictedTensile: raw.tensile.value,
+      predictedMfi:     raw.mfi.value,
+      predictedVicat:   raw.vicat.value,
       measuredHdt:   mHdt  !== '' ? Number(mHdt)  : undefined,
       measuredIzod:  mIzod !== '' ? Number(mIzod) : undefined,
       measuredVoc:   mVoc  !== '' ? Number(mVoc)  : undefined,
+      measuredTensile: mTensile !== '' ? Number(mTensile) : undefined,
+      measuredMfi:     mMfi     !== '' ? Number(mMfi)     : undefined,
+      measuredVicat:   mVicat   !== '' ? Number(mVicat)   : undefined,
     }
     onAdd(p)
     setLot(''); setMHdt(''); setMIzod(''); setMVoc('')
+    setMTensile(''); setMMfi(''); setMVicat('')
   }
 
   const importables = records.filter(r =>
@@ -2139,15 +2152,20 @@ function M5CalibrationTab({
       predictedHdt:  r.prediction.hdt.value,
       predictedIzod: r.prediction.izod.value,
       predictedVoc:  r.prediction.voc.value,
+      predictedTensile: r.prediction.tensile.value,
+      predictedMfi:     r.prediction.mfi.value,
+      predictedVicat:   r.prediction.vicat.value,
       measuredHdt:  r.actual?.hdt,
       measuredIzod: r.actual?.izod,
       measuredVoc:  r.actual?.voc,
+      measuredMfi:  r.actual?.mfi,
     }
     onAdd(p)
   }
 
   const canFit = calibPoints.some(
     p => p.measuredHdt != null || p.measuredIzod != null || p.measuredVoc != null
+      || p.measuredTensile != null || p.measuredMfi != null || p.measuredVicat != null
   )
   const active = calibResult?.active === true
 
@@ -2255,6 +2273,36 @@ function M5CalibrationTab({
                   <span className="text-[10px] text-gray-400">µg/g</span>
                 </div>
               </div>
+              <div className="flex flex-col gap-0.5">
+                <label className="text-[10px] text-gray-500 font-medium">인장 실측</label>
+                <div className="flex items-center gap-1">
+                  <input type="number" value={mTensile} placeholder="—"
+                    onChange={e => setMTensile(e.target.value)}
+                    className="w-16 h-7 text-xs font-mono border rounded px-1.5 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                  />
+                  <span className="text-[10px] text-gray-400">MPa</span>
+                </div>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <label className="text-[10px] text-gray-500 font-medium">MFI 실측</label>
+                <div className="flex items-center gap-1">
+                  <input type="number" value={mMfi} placeholder="—"
+                    onChange={e => setMMfi(e.target.value)}
+                    className="w-16 h-7 text-xs font-mono border rounded px-1.5 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                  />
+                  <span className="text-[10px] text-gray-400">g/10min</span>
+                </div>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <label className="text-[10px] text-gray-500 font-medium">Vicat 실측</label>
+                <div className="flex items-center gap-1">
+                  <input type="number" value={mVicat} placeholder="—"
+                    onChange={e => setMVicat(e.target.value)}
+                    className="w-16 h-7 text-xs font-mono border rounded px-1.5 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                  />
+                  <span className="text-[10px] text-gray-400">℃</span>
+                </div>
+              </div>
             </div>
 
             <Button size="sm" onClick={handleAdd} disabled={addDisabled}>
@@ -2289,6 +2337,12 @@ function M5CalibrationTab({
                       <TableHead className="text-xs text-right">예VOC</TableHead>
                       <TableHead className="text-xs text-right">실VOC</TableHead>
                       <TableHead className="text-xs text-right text-blue-600">Δ</TableHead>
+                      <TableHead className="text-xs text-right">예인장</TableHead>
+                      <TableHead className="text-xs text-right text-blue-600">Δ인장</TableHead>
+                      <TableHead className="text-xs text-right">예MFI</TableHead>
+                      <TableHead className="text-xs text-right text-blue-600">ΔMFI</TableHead>
+                      <TableHead className="text-xs text-right">예Vicat</TableHead>
+                      <TableHead className="text-xs text-right text-blue-600">ΔVicat</TableHead>
                       <TableHead />
                     </TableRow>
                   </TableHeader>
@@ -2305,6 +2359,12 @@ function M5CalibrationTab({
                         <TableCell className="text-xs text-right font-mono">{p.predictedVoc.toFixed(0)}</TableCell>
                         <TableCell className="text-xs text-right font-mono">{p.measuredVoc?.toFixed(0) ?? '—'}</TableCell>
                         <TableCell className="text-xs text-right">{delta(p.predictedVoc, p.measuredVoc, 10)}</TableCell>
+                        <TableCell className="text-xs text-right font-mono">{p.predictedTensile.toFixed(1)}</TableCell>
+                        <TableCell className="text-xs text-right">{delta(p.predictedTensile, p.measuredTensile, 4)}</TableCell>
+                        <TableCell className="text-xs text-right font-mono">{p.predictedMfi.toFixed(1)}</TableCell>
+                        <TableCell className="text-xs text-right">{delta(p.predictedMfi, p.measuredMfi, 3)}</TableCell>
+                        <TableCell className="text-xs text-right font-mono">{p.predictedVicat.toFixed(1)}</TableCell>
+                        <TableCell className="text-xs text-right">{delta(p.predictedVicat, p.measuredVicat, 5)}</TableCell>
                         <TableCell>
                           <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-gray-300 hover:text-red-500"
                             onClick={() => onRemove(p.id)}>×</Button>
@@ -2365,22 +2425,28 @@ function M5CalibrationTab({
 
                 <div className="space-y-2">
                   <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">── 전역 회귀 계수</p>
-                  <CalibStatRow label="HDT"  unit="℃"     c={calibResult.hdt}  />
-                  <CalibStatRow label="Izod" unit="kJ/m²" c={calibResult.izod} />
-                  <CalibStatRow label="VOC"  unit="µg/g"  c={calibResult.voc}  />
+                  {calibResult.hdt.n  >= 2 && <CalibStatRow label="HDT"  unit="℃"      c={calibResult.hdt}  />}
+                  {calibResult.izod.n >= 2 && <CalibStatRow label="Izod" unit="kJ/m²"  c={calibResult.izod} />}
+                  {calibResult.voc.n  >= 2 && <CalibStatRow label="VOC"  unit="µg/g"   c={calibResult.voc}  />}
+                  {calibResult.tensile.n >= 2 && <CalibStatRow label="인장" unit="MPa"     c={calibResult.tensile} />}
+                  {calibResult.mfi.n     >= 2 && <CalibStatRow label="MFI"  unit="g/10min" c={calibResult.mfi}     />}
+                  {calibResult.vicat.n   >= 2 && <CalibStatRow label="Vicat" unit="℃"      c={calibResult.vicat}   />}
                 </div>
 
                 {calibResult.mode === 'segment' && (
                   <div className="space-y-2">
                     <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">── 세그먼트별 보정</p>
                     {Object.entries(calibResult.bySegment).map(([seg, fit]) => {
-                      const maxN = Math.max(fit.hdt.n, fit.izod.n, fit.voc.n)
+                      const maxN = Math.max(fit.hdt.n, fit.izod.n, fit.voc.n, fit.tensile.n, fit.mfi.n, fit.vicat.n)
                       return (
                         <div key={seg} className="p-2 rounded border bg-violet-50/40 space-y-1.5">
                           <p className="text-[11px] font-semibold text-violet-700">[{seg}] {maxN}개</p>
                           {fit.hdt.n  >= 2 && <CalibStatRow label="HDT"  unit="℃"     c={fit.hdt}  />}
                           {fit.izod.n >= 2 && <CalibStatRow label="Izod" unit="kJ/m²" c={fit.izod} />}
                           {fit.voc.n  >= 2 && <CalibStatRow label="VOC"  unit="µg/g"  c={fit.voc}  />}
+                          {fit.tensile.n >= 2 && <CalibStatRow label="인장" unit="MPa"     c={fit.tensile} />}
+                          {fit.mfi.n     >= 2 && <CalibStatRow label="MFI"  unit="g/10min" c={fit.mfi}     />}
+                          {fit.vicat.n   >= 2 && <CalibStatRow label="Vicat" unit="℃"      c={fit.vicat}   />}
                         </div>
                       )
                     })}
@@ -2806,9 +2872,15 @@ export default function App() {
         predictedHdt:  p.predictedHdt,
         predictedIzod: p.predictedIzod,
         predictedVoc:  p.predictedVoc,
+        predictedTensile: p.predictedTensile,
+        predictedMfi:     p.predictedMfi,
+        predictedVicat:   p.predictedVicat,
         measuredHdt:   p.measuredHdt,
         measuredIzod:  p.measuredIzod,
         measuredVoc:   p.measuredVoc,
+        measuredTensile: p.measuredTensile,
+        measuredMfi:     p.measuredMfi,
+        measuredVicat:   p.measuredVicat,
       }))
       setCalibResult(fitCalibration(pairs))
       return pts
