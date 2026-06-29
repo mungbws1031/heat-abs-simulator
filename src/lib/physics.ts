@@ -47,13 +47,19 @@ export interface Formulation {
 }
 
 export interface PredictionResult {
-  hdt:    { value: number; low: number; high: number }
-  vicat:  { value: number; low: number; high: number }
-  izod:   { value: number; low: number; high: number }
-  mfi:    { value: number; low: number; high: number }
-  voc:    { value: number; low: number; high: number }
-  cost:   { value: number; low: number; high: number }
-  ul94:   'V-0' | 'V-2' | 'HB' | 'N/A'
+  hdt:     { value: number; low: number; high: number }
+  vicat:   { value: number; low: number; high: number }
+  izod:    { value: number; low: number; high: number }
+  tensile: { value: number; low: number; high: number }   // NEW
+  density: { value: number; low: number; high: number }   // NEW
+  mfi:     { value: number; low: number; high: number }   // 220℃/10kg (기존)
+  mi200:   { value: number; low: number; high: number }   // NEW: 200℃/21.6kg
+  mi250_2: { value: number; low: number; high: number }   // NEW: 250℃/2.16kg
+  mi250_5: { value: number; low: number; high: number }   // NEW: 250℃/5kg
+  voc:     { value: number; low: number; high: number }
+  cost:    { value: number; low: number; high: number }
+  ul94:    'V-0' | 'V-2' | 'HB' | 'N/A'
+  segment: 'ABS' | 'ABS+PC' | 'PC+ABS' | 'αMSAN-ABS'   // NEW
   specPass: { hdt: boolean | null; izod: boolean | null; voc: boolean | null }
   confidence: 'cold' | 'low' | 'medium' | 'high'
   additiveSummary: string[]
@@ -295,6 +301,64 @@ function buildSummary(f: Formulation, izodBase: number, izodFinal: number): stri
   return msgs
 }
 
+// 인장강도 (MPa) — 경험식
+export function tensileStrength(f: Formulation, sanWt: number): number {
+  const baseTensile = 35 + (f.anContent - 24) * 0.8
+  const rubberTot = f.gAbs + f.uhmwSr * 0.5 + f.mbs * 0.5 + f.sebs * 0.5 + f.acrylicIm * 0.5
+  const rubberPenalty = rubberTot * 0.35
+  const npmiEffect = f.npmi * 0.2
+  const silaneMultiplier = f.silane >= 0.1 ? 1.3 : 1.0
+  const gfEffect = f.glassFiber * 1.5 * silaneMultiplier
+  const cfEffect = f.carbonFiber * 3.0
+  const talcEffect = f.talc * 0.5 * (f.silane >= 0.1 ? 1.2 : 1.0)
+  const nanoclayEffect = Math.min(f.nanoclay, 5) * 1.0
+  const pcEffect = f.pc * 0.25
+  const frEffect = -f.phosphorusFr * 0.35
+  const softEffect = -(f.ema * 0.8 + f.uhmwSr * 0.3)
+  const alphamsanEffect = f.alphaMsan * 0.15
+  void sanWt
+  return Math.max(15, Math.min(100, baseTensile - rubberPenalty + npmiEffect + gfEffect + cfEffect + talcEffect + nanoclayEffect + pcEffect + frEffect + softEffect + alphamsanEffect))
+}
+
+// 비중 (g/cm³) — 원료 밀도 가중평균
+export function densityCalc(f: Formulation, sanWt: number): number {
+  const parts: Array<{ w: number; d: number }> = [
+    { w: f.npmi,         d: 1.068 },
+    { w: f.gAbs,         d: 1.040 },
+    { w: sanWt,          d: 1.080 },
+    { w: f.cbMB,         d: 1.150 },
+    { w: f.pc,           d: 1.200 },
+    { w: f.alphaMsan,    d: 1.090 },
+    { w: f.nanoclay,     d: 1.800 },
+    { w: f.ema,          d: 0.940 },
+    { w: f.uhmwSr,       d: 0.970 },
+    { w: f.mbs,          d: 1.100 },
+    { w: f.sebs,         d: 0.920 },
+    { w: f.acrylicIm,    d: 1.070 },
+    { w: f.phosphorusFr, d: 1.300 },
+    { w: f.ptfe,         d: 2.200 },
+    { w: f.talc,         d: 2.750 },
+    { w: f.glassFiber,   d: 2.540 },
+    { w: f.carbonFiber,  d: 1.780 },
+    { w: f.antioxidant,  d: 1.050 },
+    { w: f.lubricant,    d: 0.970 },
+  ]
+  let totalW = 0, totalM = 0
+  for (const { w, d } of parts) {
+    if (w > 0) { totalW += w; totalM += w * d }
+  }
+  return totalW > 0 ? totalM / totalW : 1.06
+}
+
+// 세그먼트 분류 (v13 로직 준용)
+export function classifySegment(f: Formulation): 'ABS' | 'ABS+PC' | 'PC+ABS' | 'αMSAN-ABS' {
+  const pcRatio = f.pc / Math.max(1, f.npmi + f.gAbs + f.pc + f.alphaMsan)
+  if (pcRatio >= 0.40) return 'PC+ABS'
+  if (f.pc >= 5) return 'ABS+PC'
+  if (f.alphaMsan >= 15) return 'αMSAN-ABS'
+  return 'ABS'
+}
+
 // ──────────────────────────────────────────────
 // 메인 예측 함수
 // ──────────────────────────────────────────────
@@ -334,14 +398,27 @@ export function predictColdStart(f: Formulation): PredictionResult {
 
   const err = (v: number, pct: number) => ({ value: v, low: v * (1 - pct), high: v * (1 + pct) })
 
+  const tensileVal = tensileStrength(f, sanWt)
+  const densityVal = densityCalc(f, sanWt)
+  const mi200Val   = mfiVal * 0.91
+  const mi250_2Val = mfiVal * 0.82
+  const mi250_5Val = mfiVal * 1.43
+  const segment    = classifySegment(f)
+
   return {
-    hdt:   err(hdtVal,   0.07),
-    vicat: err(vicatVal, 0.06),
-    izod:  err(izodFinal, 0.20),
-    mfi:   err(mfiVal,   0.25),
-    voc:   err(vocVal,   0.30),
-    cost:  err(costVal,  0.10),
+    hdt:     err(hdtVal,    0.07),
+    vicat:   err(vicatVal,  0.06),
+    izod:    err(izodFinal, 0.20),
+    tensile: err(tensileVal, 0.08),
+    density: { value: densityVal, low: densityVal * 0.995, high: densityVal * 1.005 },
+    mfi:     err(mfiVal,    0.25),
+    mi200:   err(mi200Val,  0.25),
+    mi250_2: err(mi250_2Val, 0.25),
+    mi250_5: err(mi250_5Val, 0.25),
+    voc:     err(vocVal,    0.30),
+    cost:    err(costVal,   0.10),
     ul94,
+    segment,
     specPass: {
       hdt:  hdtVal   >= 115 ? true : hdtVal   >= 110 ? null : false,
       izod: izodFinal >= 15  ? true : izodFinal >= 10  ? null : false,
@@ -394,6 +471,51 @@ export function generateRSMDOE(factors: DOEFactor[]): DOERun[] {
     factors.slice(3).forEach(f => { fvals[f.name] = f.center })
     return { id: i + 1, factors: fvals, label: `BB-${i + 1}` }
   })
+}
+
+// ──────────────────────────────────────────────
+// 민감도 분석
+// ──────────────────────────────────────────────
+const SENS_KEYS: (keyof Formulation)[] = [
+  'npmi','gAbs','anContent','pc','alphaMsan','nanoclay',
+  'ema','uhmwSr','mbs','sebs','acrylicIm',
+  'phosphorusFr','talc','glassFiber','carbonFiber',
+  'silane','injTemp','antioxidant','lubricant','wax',
+]
+const SENS_DELTA: Partial<Record<keyof Formulation, number>> = {
+  anContent: 1, injTemp: 5,
+}
+export type SensProp = 'hdt' | 'izod' | 'tensile' | 'mfi' | 'voc' | 'density'
+export function computeSensitivity(f: Formulation, prop: SensProp): Array<{ key: string; label: string; value: number }> {
+  const getPropVal = (r: PredictionResult) => r[prop].value
+  const base = getPropVal(predictColdStart(f))
+  const results: Array<{ key: string; label: string; raw: number }> = []
+  const LABELS: Record<string, string> = {
+    npmi: 'N-PMI', gAbs: 'g-ABS(고무)', anContent: 'AN 함량',
+    pc: 'PC 블렌드', alphaMsan: 'αMSAN', nanoclay: '나노클레이',
+    ema: 'EMA 상용화제', uhmwSr: 'UHMW-SR', mbs: 'MBS', sebs: 'SEBS',
+    acrylicIm: '아크릴계IM', phosphorusFr: '인계 FR', talc: '탈크',
+    glassFiber: 'GF 유리섬유', carbonFiber: 'CF 카본섬유',
+    silane: '실란 커플링', injTemp: '사출 온도',
+    antioxidant: '산화방지제', lubricant: '활제(EBS)', wax: '왁스',
+  }
+  void base
+  for (const key of SENS_KEYS) {
+    const delta = SENS_DELTA[key] ?? 2
+    const cur = f[key] as number
+    const fPlus: Formulation = { ...f, [key]: cur + delta }
+    const fMinus: Formulation = { ...f, [key]: Math.max(0, cur - delta) }
+    const vPlus = getPropVal(predictColdStart(fPlus))
+    const vMinus = getPropVal(predictColdStart(fMinus))
+    const sens = (vPlus - vMinus) / (2 * delta)
+    results.push({ key, raw: sens, label: LABELS[key] ?? key })
+  }
+  const maxAbs = Math.max(...results.map(r => Math.abs(r.raw)), 0.001)
+  return results
+    .map(r => ({ key: r.key, label: r.label, value: r.raw / maxAbs }))
+    .filter(r => Math.abs(r.value) >= 0.04)
+    .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
+    .slice(0, 12)
 }
 
 export const DEFAULT_FACTORS: DOEFactor[] = [

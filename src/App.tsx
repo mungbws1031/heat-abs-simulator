@@ -10,11 +10,13 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   predictColdStart,
+  computeSensitivity,
   generateScreeningDOE,
   generateRSMDOE,
   DEFAULT_FACTORS,
   type Formulation,
   type PredictionResult,
+  type SensProp,
   type DOERun,
 } from '@/lib/physics'
 import {
@@ -59,12 +61,14 @@ interface ExperimentRecord {
 // 상수
 // ──────────────────────────────────────────────
 const SPEC = {
-  hdt:  { target: 115, unit: '℃',    label: 'HDT (1.8MPa)',    min: 80,  max: 140, higherIsBetter: true  },
-  vicat:{ target: 123, unit: '℃',    label: 'Vicat',           min: 88,  max: 150, higherIsBetter: true  },
-  izod: { target: 15,  unit: 'kJ/m²', label: 'Izod 충격',      min: 0,   max: 80,  higherIsBetter: true  },
-  mfi:  { target: 5,   unit: 'g/10min',label: 'MFI (220℃/10kg)',min: 0,  max: 40,  higherIsBetter: false },
-  voc:  { target: 50,  unit: 'µg/g',  label: 'TVOC (VDA278)',   min: 0,   max: 100, higherIsBetter: false },
-  cost: { target: 0,   unit: '₩/kg',  label: '원가 지수',       min: 2500,max: 6000,higherIsBetter: false },
+  hdt:     { target: 115,  unit: '℃',       label: 'HDT (1.8MPa)',       min: 80,   max: 140,  higherIsBetter: true  },
+  vicat:   { target: 123,  unit: '℃',       label: 'Vicat',               min: 88,   max: 150,  higherIsBetter: true  },
+  izod:    { target: 15,   unit: 'kJ/m²',   label: 'Izod 충격',           min: 0,    max: 80,   higherIsBetter: true  },
+  tensile: { target: 40,   unit: 'MPa',     label: '인장강도',             min: 15,   max: 80,   higherIsBetter: true  },
+  density: { target: 0,    unit: 'g/cm³',   label: '비중 (계산)',          min: 1.00, max: 1.50, higherIsBetter: false },
+  mfi:     { target: 5,    unit: 'g/10min', label: 'MFI (220℃/10kg)',     min: 0,    max: 40,   higherIsBetter: false },
+  voc:     { target: 50,   unit: 'µg/g',    label: 'TVOC (VDA278)',        min: 0,    max: 100,  higherIsBetter: false },
+  cost:    { target: 0,    unit: '₩/kg',    label: '원가 지수',            min: 2500, max: 6000, higherIsBetter: false },
 }
 
 const DEFAULT_FORM: Formulation = {
@@ -81,6 +85,39 @@ const DEFAULT_FORM: Formulation = {
   talc: 0, glassFiber: 0, carbonFiber: 0,
   // 기능성 소량 첨가제
   silane: 0, wax: 0, hals: 0, heatStabilizer: 0, metalDeact: 0, antistatic: 0,
+}
+
+const PRESETS: Record<string, Partial<Formulation>> = {
+  '표준 (충격 우수)': {
+    npmi: 14, gAbs: 32, anContent: 27,
+    cbMB: 2.5, antioxidant: 0.5, lubricant: 1.0,
+    injTemp: 250, moldTemp: 70,
+    pc: 0, alphaMsan: 0, nanoclay: 0,
+    ema: 5, uhmwSr: 2, mbs: 0, sebs: 0, acrylicIm: 0,
+    phosphorusFr: 0, ptfe: 0,
+    talc: 0, glassFiber: 0, carbonFiber: 0,
+    silane: 0, wax: 0, hals: 0, heatStabilizer: 0, metalDeact: 0, antistatic: 0,
+  },
+  '고내열형 (Tg↑)': {
+    npmi: 22, gAbs: 25, anContent: 30,
+    cbMB: 2.5, antioxidant: 0.5, lubricant: 1.0,
+    injTemp: 260, moldTemp: 70,
+    pc: 10, alphaMsan: 0, nanoclay: 3,
+    ema: 0, uhmwSr: 0, mbs: 0, sebs: 0, acrylicIm: 0,
+    phosphorusFr: 0, ptfe: 0,
+    talc: 8, glassFiber: 0, carbonFiber: 0,
+    silane: 0.2, wax: 0, hals: 0, heatStabilizer: 0, metalDeact: 0, antistatic: 0,
+  },
+  '골든존 (내열+충격)': {
+    npmi: 18, gAbs: 28, anContent: 28,
+    cbMB: 2.5, antioxidant: 0.5, lubricant: 1.0,
+    injTemp: 252, moldTemp: 70,
+    pc: 5, alphaMsan: 0, nanoclay: 2,
+    ema: 4, uhmwSr: 1.5, mbs: 0, sebs: 0, acrylicIm: 0,
+    phosphorusFr: 0, ptfe: 0,
+    talc: 5, glassFiber: 0, carbonFiber: 0,
+    silane: 0.1, wax: 0, hals: 0, heatStabilizer: 0, metalDeact: 0, antistatic: 0,
+  },
 }
 
 // ──────────────────────────────────────────────
@@ -327,6 +364,116 @@ function FaceMeter({ pred }: { pred: PredictionResult }) {
 }
 
 // ──────────────────────────────────────────────
+// 2차 검증 컴포넌트
+// ──────────────────────────────────────────────
+function ValidationChecks({ pred }: { pred: PredictionResult }) {
+  const hdt     = pred.hdt.value
+  const vic     = pred.vicat.value
+  const mi220   = pred.mfi.value
+  const mi200   = pred.mi200.value
+  const mi250_2 = pred.mi250_2.value
+  const mi250_5 = pred.mi250_5.value
+  const izod    = pred.izod.value
+  const ten     = pred.tensile.value
+
+  type State = 'ok' | 'warn' | 'bad'
+  const check = (state: State, title: string, detail: string) => (
+    <div key={title} className={`flex items-start gap-2 p-2 rounded border text-xs mb-1.5
+      ${state === 'ok' ? 'bg-green-50 border-green-200' : state === 'warn' ? 'bg-yellow-50 border-yellow-200' : 'bg-red-50 border-red-200'}`}>
+      <span className={`font-bold mt-0.5 ${state === 'ok' ? 'text-green-600' : state === 'warn' ? 'text-yellow-600' : 'text-red-600'}`}>
+        {state === 'ok' ? '✓' : state === 'warn' ? '⚠' : '❌'}
+      </span>
+      <div>
+        <p className={`font-semibold ${state === 'ok' ? 'text-green-700' : state === 'warn' ? 'text-yellow-700' : 'text-red-700'}`}>{title}</p>
+        <p className="text-gray-500 text-[11px] mt-0.5">{detail}</p>
+      </div>
+    </div>
+  )
+
+  const checks = []
+
+  // 검증1: VICAT >= HDT 절대규칙
+  if (vic < hdt) {
+    checks.push(check('bad', 'VICAT >= HDT (절대규칙)', `VICAT ${vic.toFixed(1)} < HDT ${hdt.toFixed(1)} — 물리법칙 위반`))
+  } else {
+    checks.push(check('ok', 'VICAT >= HDT', `VICAT ${vic.toFixed(1)} >= HDT ${hdt.toFixed(1)} ✓`))
+  }
+
+  // 검증2: VICAT-HDT 관계 (경험 범위 ±12℃)
+  const vicExp = 9.9 + 1.123 * hdt
+  const vicDev = vic - vicExp
+  if (Math.abs(vicDev) <= 8) {
+    checks.push(check('ok', 'VICAT-HDT 관계', `편차 ${vicDev >= 0 ? '+' : ''}${vicDev.toFixed(1)}℃ (경험 범위 ±8℃)`))
+  } else if (Math.abs(vicDev) <= 15) {
+    checks.push(check('warn', 'VICAT-HDT 관계', `편차 ${vicDev >= 0 ? '+' : ''}${vicDev.toFixed(1)}℃ — 경험 범위 경계`))
+  } else {
+    checks.push(check('bad', 'VICAT-HDT 관계', `편차 ${vicDev >= 0 ? '+' : ''}${vicDev.toFixed(1)}℃ — 비정상 편차 (실측 필요)`))
+  }
+
+  // 검증3: MI 하중-순서 250℃ (5kg > 2.16kg)
+  if (mi250_5 >= mi250_2 * 1.05) {
+    checks.push(check('ok', 'MI 하중-순서 (250℃)', `MI(5kg) ${mi250_5.toFixed(1)} > MI(2.16kg) ${mi250_2.toFixed(1)} — Power-Law 정상`))
+  } else if (mi250_5 >= mi250_2 * 0.95) {
+    checks.push(check('warn', 'MI 하중-순서 (250℃)', `MI(5kg) ${mi250_5.toFixed(1)} ≈ MI(2.16kg) ${mi250_2.toFixed(1)} — 경계값`))
+  } else {
+    checks.push(check('bad', 'MI 하중-순서 (250℃)', `MI(5kg) ${mi250_5.toFixed(1)} < MI(2.16kg) ${mi250_2.toFixed(1)} — 물리법칙 위반`))
+  }
+
+  // 검증4: MI 온도-순서
+  if (mi250_5 > mi220 && mi220 > mi200) {
+    checks.push(check('ok', 'MI 온도-순서', `250·5 > 220·10 > 200·21.6: ${mi250_5.toFixed(1)} > ${mi220.toFixed(1)} > ${mi200.toFixed(1)}`))
+  } else {
+    checks.push(check('warn', 'MI 온도-순서', `예측: 250·5=${mi250_5.toFixed(1)}, 220·10=${mi220.toFixed(1)}, 200·21.6=${mi200.toFixed(1)} — 비전형 순서`))
+  }
+
+  // 검증5: 트레이드오프 — 충격·내열·인장·MI 동시 최상
+  const allGreat = izod >= 20 && hdt >= 120 && ten >= 50 && mi220 >= 10
+  if (allGreat) {
+    checks.push(check('warn', '트레이드오프 점검', `충격${izod.toFixed(1)}·HDT${hdt.toFixed(1)}·인장${ten.toFixed(1)}·MI${mi220.toFixed(1)} 동시 우수 — 실측 검증 강력 권장`))
+  } else {
+    checks.push(check('ok', '트레이드오프', '정상 범위 (전 물성 동시 최상 아님)'))
+  }
+
+  return <div>{checks}</div>
+}
+
+// ──────────────────────────────────────────────
+// 민감도 바 컴포넌트
+// ──────────────────────────────────────────────
+function SensitivityBars({ formulation, prop }: { formulation: Formulation; prop: SensProp }) {
+  const sensData = computeSensitivity(formulation, prop)
+  if (sensData.length === 0) return <p className="text-xs text-gray-400">해당 물성에 영향 없음</p>
+
+  return (
+    <div className="space-y-1.5">
+      {sensData.map(({ key, label, value }) => {
+        const positive = value >= 0
+        const width = Math.abs(value) * 45
+        return (
+          <div key={key} className="grid grid-cols-[110px_1fr_36px] items-center gap-2 text-xs">
+            <span className="text-gray-500 truncate">{label}</span>
+            <div className="relative h-4 bg-gray-100 rounded overflow-hidden">
+              <div className="absolute left-1/2 top-0 bottom-0 w-px bg-gray-300" />
+              <div
+                className="absolute top-0.5 bottom-0.5 rounded-sm"
+                style={{
+                  [positive ? 'left' : 'right']: '50%',
+                  width: `${width}%`,
+                  background: positive ? '#22c55e' : '#ef4444',
+                }}
+              />
+            </div>
+            <span className={`text-right font-mono text-[10px] ${positive ? 'text-green-600' : 'text-red-500'}`}>
+              {positive ? '+' : ''}{value.toFixed(2)}
+            </span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ──────────────────────────────────────────────
 // M1 + M2: 배합 입력기 & 물성 예측기 (실시간)
 // ──────────────────────────────────────────────
 function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLoaded, calibResult }: {
@@ -340,6 +487,8 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
   const [pred, setPred] = useState<PredictionResult>(() => predictColdStart(DEFAULT_FORM))
   const [lotName, setLotName] = useState('')
   const [changedKey, setChangedKey] = useState<string | null>(null)
+  const [miTab, setMiTab] = useState<'mfi'|'mi200'|'mi250_2'|'mi250_5'>('mfi')
+  const [sensTab, setSensTab] = useState<SensProp>('hdt')
 
   const totalComposition = form.npmi + form.gAbs + form.cbMB
     + form.pc + form.alphaMsan + form.nanoclay
@@ -401,6 +550,15 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
           </p>
         </CardHeader>
         <CardContent className="space-y-0 pb-4">
+          {/* 프리셋 */}
+          <div className="flex gap-2 flex-wrap pb-3 border-b mb-2">
+            {Object.entries(PRESETS).map(([name, preset]) => (
+              <Button key={name} size="sm" variant="outline" className="h-7 text-xs"
+                onClick={() => setForm(f => ({ ...f, ...preset }))}>
+                ▸ {name}
+              </Button>
+            ))}
+          </div>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide py-2">── 주요 조성</p>
           <SliderRow label="N-PMI 함량"   value={form.npmi}       min={10}  max={25}  step={0.5} unit="wt%"  onChange={set('npmi')}       highlight={changedKey==='npmi'} />
           <SliderRow label="g-ABS(고무)"  value={form.gAbs}       min={20}  max={40}  step={0.5} unit="wt%"  onChange={set('gAbs')}       highlight={changedKey==='gAbs'} />
@@ -489,8 +647,18 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
             onChange={set('injTemp')}
             highlight={changedKey==='injTemp'}
             warn={form.injTemp > 255 ? '⚠ 고온 체류 시 VOC 증가 위험' : undefined} />
-          <SliderRow label="금형 온도" value={form.moldTemp} min={60} max={80} step={1} unit="℃"
-            onChange={set('moldTemp')} highlight={changedKey==='moldTemp'} />
+          <div className="grid grid-cols-[160px_1fr] items-center gap-3 py-1.5 px-2">
+            <Label className="text-sm">금형 온도</Label>
+            <div className="flex gap-1">
+              {[50,70,80].map(t => (
+                <button key={t}
+                  className={`px-3 py-1 text-xs rounded border transition-colors ${form.moldTemp === t ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400'}`}
+                  onClick={() => set('moldTemp')(t)}>
+                  {t}℃
+                </button>
+              ))}
+            </div>
+          </div>
 
           {!compositionOk && (
             <p className="text-xs text-red-600 pt-2 px-2">⚠ 조성 합계 초과. N-PMI·g-ABS 또는 추가 재료 함량을 낮추세요.</p>
@@ -504,16 +672,47 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">M2 — 물성 예측</CardTitle>
-              {calibResult?.active
-                ? <Badge className="text-xs bg-green-600 text-white border-0">M5 보정 적용 중</Badge>
-                : <Badge variant="outline" className="text-xs">Cold-start</Badge>}
+              <div className="flex items-center gap-2">
+                <span className="text-xs px-2 py-0.5 rounded font-mono"
+                  style={{ background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0' }}>
+                  {pred.segment}
+                </span>
+                {calibResult?.active
+                  ? <Badge className="text-xs bg-green-600 text-white border-0">M5 보정 적용 중</Badge>
+                  : <Badge variant="outline" className="text-xs">Cold-start</Badge>}
+              </div>
             </div>
           </CardHeader>
           <CardContent className="pb-3">
             <MetricGauge label={SPEC.hdt.label}  {...pred.hdt}  unit={SPEC.hdt.unit}  min={SPEC.hdt.min}  max={SPEC.hdt.max}  target={SPEC.hdt.target}  higherIsBetter={true} />
             <MetricGauge label={SPEC.vicat.label} {...pred.vicat} unit={SPEC.vicat.unit} min={SPEC.vicat.min} max={SPEC.vicat.max} higherIsBetter={true} />
             <MetricGauge label={SPEC.izod.label} {...pred.izod} unit={SPEC.izod.unit} min={SPEC.izod.min} max={SPEC.izod.max} target={SPEC.izod.target} higherIsBetter={true} />
-            <MetricGauge label={SPEC.mfi.label}  {...pred.mfi}  unit={SPEC.mfi.unit}  min={SPEC.mfi.min}  max={SPEC.mfi.max}  higherIsBetter={false} />
+            {/* 인장강도 */}
+            <MetricGauge label="인장강도" {...pred.tensile} unit="MPa" min={15} max={80} higherIsBetter={true} />
+            {/* 비중 */}
+            <MetricGauge label="비중 (계산)" {...pred.density} unit="g/cm³" min={1.0} max={1.5} higherIsBetter={false} />
+            {/* MI 4조건 탭 */}
+            <div className="mt-2 pt-2 border-t">
+              <p className="text-xs font-semibold text-gray-400 mb-1">용융지수 (MI)</p>
+              <div className="flex gap-1 mb-2 flex-wrap">
+                {[
+                  { key: 'mfi', label: '220/10' },
+                  { key: 'mi200', label: '200/21.6' },
+                  { key: 'mi250_2', label: '250/2.16' },
+                  { key: 'mi250_5', label: '250/5' },
+                ].map(({ key, label }) => (
+                  <button key={key}
+                    className={`px-2 py-0.5 text-[10px] rounded border transition-colors ${miTab === key ? 'bg-purple-600 text-white border-purple-600' : 'border-gray-200 text-gray-500 hover:border-purple-400'}`}
+                    onClick={() => setMiTab(key as 'mfi'|'mi200'|'mi250_2'|'mi250_5')}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {miTab === 'mfi'    && <MetricGauge label="MFI (220℃/10kg)"  {...pred.mfi}    unit="g/10min" min={0} max={40} higherIsBetter={false} />}
+              {miTab === 'mi200'  && <MetricGauge label="MI (200℃/21.6kg)" {...pred.mi200}  unit="g/10min" min={0} max={40} higherIsBetter={false} />}
+              {miTab === 'mi250_2' && <MetricGauge label="MI (250℃/2.16kg)" {...pred.mi250_2} unit="g/10min" min={0} max={40} higherIsBetter={false} />}
+              {miTab === 'mi250_5' && <MetricGauge label="MI (250℃/5kg)"    {...pred.mi250_5} unit="g/10min" min={0} max={40} higherIsBetter={false} />}
+            </div>
             <MetricGauge label={SPEC.voc.label}  {...pred.voc}  unit={SPEC.voc.unit}  min={SPEC.voc.min}  max={SPEC.voc.max}  target={SPEC.voc.target}  higherIsBetter={false} />
             <MetricGauge label={SPEC.cost.label} {...pred.cost} unit={SPEC.cost.unit} min={SPEC.cost.min} max={SPEC.cost.max} higherIsBetter={false} />
 
@@ -523,6 +722,17 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
               <UL94Badge rating={pred.ul94} />
             </div>
 
+            {/* 골든존 배지 */}
+            {pred.specPass.hdt !== false && pred.specPass.izod !== false && pred.izod.value >= 10 && pred.hdt.value >= 100 && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded mb-2"
+                style={{ background: '#fef3c7', border: '1px solid #f59e0b' }}>
+                <span className="text-xl">🎯</span>
+                <div>
+                  <span className="text-sm font-bold text-amber-700">골든존</span>
+                  <span className="text-xs text-amber-600 ml-2">충격 ≥10 · 내열 ≥100 동시 달성</span>
+                </div>
+              </div>
+            )}
             {/* 5단계 표정 미터 */}
             <FaceMeter pred={pred} />
 
@@ -543,6 +753,12 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
               <p className="text-[10px] text-gray-300 mt-2">Cold-start 오차 ±7~30%. 세로선 = 목표값.</p>
             </div>
 
+            {/* 2차 검증 체크 */}
+            <div className="mt-3 pt-2 border-t">
+              <p className="text-xs font-semibold text-gray-400 mb-2">2차 검증 (물리법칙)</p>
+              <ValidationChecks pred={pred} />
+            </div>
+
             {/* 논문 인사이트 */}
             {pred.additiveSummary.length > 0 && (
               <div className="mt-2 pt-2 border-t space-y-1">
@@ -561,6 +777,28 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
                 트래커 저장
               </Button>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* 영향도 분석 */}
+        <Card>
+          <CardHeader className="pb-1">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-sm">영향도 분석</CardTitle>
+              <div className="flex gap-1 flex-wrap">
+                {(['hdt','izod','tensile','mfi','voc','density'] as SensProp[]).map(p => (
+                  <button key={p}
+                    className={`px-2 py-0.5 text-[10px] rounded border transition-colors ${sensTab === p ? 'bg-slate-700 text-white border-slate-700' : 'border-gray-200 text-gray-500 hover:border-slate-400'}`}
+                    onClick={() => setSensTab(p)}>
+                    {p === 'hdt' ? 'HDT' : p === 'izod' ? 'Izod' : p === 'tensile' ? '인장' : p === 'mfi' ? 'MFI' : p === 'voc' ? 'VOC' : '비중'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="pb-3">
+            <SensitivityBars formulation={{ ...form, san: sanEst }} prop={sensTab} />
+            <p className="text-[10px] text-gray-400 mt-2">현재 배합 기준 수치 미분 · 초록=증가 기여 · 빨강=감소 기여</p>
           </CardContent>
         </Card>
 
