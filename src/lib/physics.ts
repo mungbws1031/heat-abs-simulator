@@ -48,6 +48,7 @@ export interface Formulation {
 
 export interface PredictionResult {
   hdt:     { value: number; low: number; high: number }
+  hdt045:  { value: number; low: number; high: number }   // HDT @ 0.45 MPa
   vicat:   { value: number; low: number; high: number }
   izod:    { value: number; low: number; high: number }
   tensile: { value: number; low: number; high: number }   // NEW
@@ -405,8 +406,12 @@ export function predictColdStart(f: Formulation): PredictionResult {
   const mi250_5Val = mfiVal * 1.43
   const segment    = classifySegment(f)
 
+  // HDT @ 0.45 MPa: 저하중 조건 — 경험식 hdt045 ≈ hdt_1.8 + 15℃ (GF/탈크 고함량은 차이 축소)
+  const hdt045Val = hdtVal + 15 - f.glassFiber * 0.22 - f.talc * 0.15 - f.carbonFiber * 0.25
+
   return {
     hdt:     err(hdtVal,    0.07),
+    hdt045:  err(hdt045Val, 0.07),
     vicat:   err(vicatVal,  0.06),
     izod:    err(izodFinal, 0.20),
     tensile: err(tensileVal, 0.08),

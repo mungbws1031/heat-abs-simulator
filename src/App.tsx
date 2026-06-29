@@ -489,6 +489,25 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
   const [changedKey, setChangedKey] = useState<string | null>(null)
   const [miTab, setMiTab] = useState<'mfi'|'mi200'|'mi250_2'|'mi250_5'>('mfi')
   const [sensTab, setSensTab] = useState<SensProp>('hdt')
+  const [savedPresets, setSavedPresets] = useState<Record<string, Formulation>>(() => {
+    try { return JSON.parse(localStorage.getItem('abs_saved_presets') ?? '{}') } catch { return {} }
+  })
+  const [presetName, setPresetName] = useState('')
+
+  const savePreset = () => {
+    const name = presetName.trim()
+    if (!name) return
+    const updated = { ...savedPresets, [name]: { ...form } }
+    setSavedPresets(updated)
+    localStorage.setItem('abs_saved_presets', JSON.stringify(updated))
+    setPresetName('')
+  }
+  const deletePreset = (name: string) => {
+    const updated = { ...savedPresets }
+    delete updated[name]
+    setSavedPresets(updated)
+    localStorage.setItem('abs_saved_presets', JSON.stringify(updated))
+  }
 
   const totalComposition = form.npmi + form.gAbs + form.cbMB
     + form.pc + form.alphaMsan + form.nanoclay
@@ -551,13 +570,43 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
         </CardHeader>
         <CardContent className="space-y-0 pb-4">
           {/* 프리셋 */}
-          <div className="flex gap-2 flex-wrap pb-3 border-b mb-2">
-            {Object.entries(PRESETS).map(([name, preset]) => (
-              <Button key={name} size="sm" variant="outline" className="h-7 text-xs"
-                onClick={() => setForm(f => ({ ...f, ...preset }))}>
-                ▸ {name}
+          <div className="pb-3 border-b mb-2 space-y-2">
+            <div className="flex gap-2 flex-wrap">
+              {Object.entries(PRESETS).map(([name, preset]) => (
+                <Button key={name} size="sm" variant="outline" className="h-7 text-xs"
+                  onClick={() => setForm(f => ({ ...f, ...preset }))}>
+                  ▸ {name}
+                </Button>
+              ))}
+            </div>
+            {Object.keys(savedPresets).length > 0 && (
+              <div className="flex gap-1.5 flex-wrap">
+                {Object.entries(savedPresets).map(([name, f]) => (
+                  <div key={name} className="flex items-center gap-0.5">
+                    <button
+                      className="px-2 py-0.5 text-xs rounded border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                      onClick={() => setForm(f)}>
+                      ★ {name}
+                    </button>
+                    <button
+                      className="text-[10px] text-gray-400 hover:text-red-500 px-0.5"
+                      onClick={() => deletePreset(name)}
+                      title="삭제">✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-1.5 items-center">
+              <input
+                type="text" placeholder="현재 배합 저장 이름..."
+                value={presetName} onChange={e => setPresetName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && savePreset()}
+                className="flex-1 text-xs border rounded px-2 py-1 outline-none focus:border-indigo-400 min-w-0" />
+              <Button size="sm" variant="outline" className="h-7 text-xs whitespace-nowrap"
+                onClick={savePreset} disabled={!presetName.trim()}>
+                저장
               </Button>
-            ))}
+            </div>
           </div>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide py-2">── 주요 조성</p>
           <SliderRow label="N-PMI 함량"   value={form.npmi}       min={10}  max={25}  step={0.5} unit="wt%"  onChange={set('npmi')}       highlight={changedKey==='npmi'} />
@@ -685,6 +734,7 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
           </CardHeader>
           <CardContent className="pb-3">
             <MetricGauge label={SPEC.hdt.label}  {...pred.hdt}  unit={SPEC.hdt.unit}  min={SPEC.hdt.min}  max={SPEC.hdt.max}  target={SPEC.hdt.target}  higherIsBetter={true} />
+            <MetricGauge label="HDT (0.45MPa)" {...pred.hdt045} unit="℃" min={90} max={160} higherIsBetter={true} />
             <MetricGauge label={SPEC.vicat.label} {...pred.vicat} unit={SPEC.vicat.unit} min={SPEC.vicat.min} max={SPEC.vicat.max} higherIsBetter={true} />
             <MetricGauge label={SPEC.izod.label} {...pred.izod} unit={SPEC.izod.unit} min={SPEC.izod.min} max={SPEC.izod.max} target={SPEC.izod.target} higherIsBetter={true} />
             {/* 인장강도 */}
@@ -827,6 +877,53 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
 }
 
 // ──────────────────────────────────────────────
+// 원가-HDT 파레토 산점도
+function ParetoScatter({
+  results, selectedRank, onSelect,
+}: { results: CandidateResult[]; selectedRank: number | null; onSelect: (r: number | null) => void }) {
+  if (results.length === 0) return null
+  const W = 340, H = 200, PAD = { l: 38, r: 12, t: 8, b: 28 }
+  const costs = results.map(r => r.prediction.cost.value)
+  const hdts  = results.map(r => r.prediction.hdt.value)
+  const minC = Math.min(...costs), maxC = Math.max(...costs)
+  const minH = Math.min(...hdts),  maxH = Math.max(...hdts)
+  const cx = (v: number) => PAD.l + ((v - minC) / (maxC - minC + 1)) * (W - PAD.l - PAD.r)
+  const cy = (v: number) => H - PAD.b - ((v - minH) / (maxH - minH + 1)) * (H - PAD.t - PAD.b)
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 200 }}>
+      {/* 축 */}
+      <line x1={PAD.l} y1={PAD.t} x2={PAD.l} y2={H - PAD.b} stroke="#cbd5e1" strokeWidth={1} />
+      <line x1={PAD.l} y1={H - PAD.b} x2={W - PAD.r} y2={H - PAD.b} stroke="#cbd5e1" strokeWidth={1} />
+      <text x={PAD.l - 4} y={PAD.t + 4} textAnchor="end" fontSize={8} fill="#94a3b8">HDT</text>
+      <text x={W / 2} y={H - 4} textAnchor="middle" fontSize={8} fill="#94a3b8">원가 (₩/kg)</text>
+      {/* 눈금 */}
+      {[minH, (minH + maxH) / 2, maxH].map((v, i) => (
+        <text key={i} x={PAD.l - 4} y={cy(v) + 3} textAnchor="end" fontSize={7} fill="#94a3b8">{v.toFixed(0)}</text>
+      ))}
+      {[minC, maxC].map((v, i) => (
+        <text key={i} x={cx(v)} y={H - PAD.b + 10} textAnchor="middle" fontSize={7} fill="#94a3b8">{v.toFixed(0)}</text>
+      ))}
+      {/* 점 */}
+      {results.map(r => {
+        const x = cx(r.prediction.cost.value)
+        const y = cy(r.prediction.hdt.value)
+        const selected = r.rank === selectedRank
+        const pass = r.specAllPass
+        return (
+          <circle key={r.rank} cx={x} cy={y} r={selected ? 6 : 4}
+            fill={pass ? (selected ? '#2563eb' : '#22c55e') : (selected ? '#2563eb' : 'none')}
+            stroke={pass ? (selected ? '#1d4ed8' : '#16a34a') : '#94a3b8'}
+            strokeWidth={selected ? 2 : 1}
+            style={{ cursor: 'pointer' }}
+            onClick={() => onSelect(r.rank === selectedRank ? null : r.rank)}>
+            <title>#{r.rank} HDT={r.prediction.hdt.value.toFixed(1)}℃ 원가={r.prediction.cost.value.toFixed(0)}₩</title>
+          </circle>
+        )
+      })}
+    </svg>
+  )
+}
+
 // M6: 자동 탐색 엔진
 // ──────────────────────────────────────────────
 type SearchRangeKey = keyof Omit<SearchConfig,
@@ -1069,6 +1166,17 @@ function SearchTab({ onLoadFormulation }: { onLoadFormulation: (f: Formulation) 
                     </tbody>
                   </table>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* 원가-HDT 산점도 */}
+            <Card>
+              <CardHeader className="pb-1">
+                <CardTitle className="text-sm">원가 vs 내열 파레토</CardTitle>
+              </CardHeader>
+              <CardContent className="pb-3">
+                <ParetoScatter results={results} selectedRank={selectedRank} onSelect={setSelectedRank} />
+                <p className="text-[10px] text-gray-400 mt-1">● Spec전체통과 ○ 미통과 · 클릭으로 선택</p>
               </CardContent>
             </Card>
 
