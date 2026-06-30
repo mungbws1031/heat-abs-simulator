@@ -1562,6 +1562,170 @@ function MarginChip({ value, unit, positive }: { value: number; unit: string; po
   )
 }
 
+// ── 목표별 최적 후보 선택 로직
+type ObjectiveKey = 'overall' | 'hdt' | 'izod' | 'cost'
+interface OptimalPick {
+  key: ObjectiveKey
+  icon: string
+  title: string
+  why: string
+  candidate: CandidateResult
+  fellBack: boolean   // 스펙 통과 후보가 없어 차선책으로 선택됨
+}
+
+function pickOptimal(results: CandidateResult[]): OptimalPick[] {
+  if (results.length === 0) return []
+  const passers = results.filter(r => r.specAllPass)
+  const pool = passers.length > 0 ? passers : results
+  const fellBack = passers.length === 0
+
+  // 종합 최적: 점수 최대 (정렬상 pool 첫 항목과 동일하지만 명시적으로 계산)
+  const overall = [...pool].sort((a, b) => b.score - a.score)[0]
+  // 최고 내열: HDT 최대 → 동점시 스펙통과 → 점수
+  const hdt = [...pool].sort((a, b) =>
+    (b.prediction.hdt.value - a.prediction.hdt.value)
+    || (Number(b.specAllPass) - Number(a.specAllPass))
+    || (b.score - a.score))[0]
+  // 최고 충격: Izod 최대
+  const izod = [...pool].sort((a, b) =>
+    (b.prediction.izod.value - a.prediction.izod.value)
+    || (Number(b.specAllPass) - Number(a.specAllPass))
+    || (b.score - a.score))[0]
+  // 최저 원가: 스펙통과 후보 중 원가 최소
+  const cost = [...pool].sort((a, b) =>
+    (a.prediction.cost.value - b.prediction.cost.value)
+    || (b.score - a.score))[0]
+
+  return [
+    { key: 'overall', icon: '🏆', title: '종합 최적', why: '스펙 충족 + 종합점수 최대', candidate: overall, fellBack },
+    { key: 'hdt',  icon: '🔥', title: '최고 내열', why: 'HDT 예측값 최대', candidate: hdt, fellBack },
+    { key: 'izod', icon: '💪', title: '최고 충격', why: 'Izod 충격강도 최대', candidate: izod, fellBack },
+    { key: 'cost', icon: '💰', title: '최저 원가', why: fellBack ? '원가 최소 (스펙 통과 없음)' : '스펙 충족 중 원가 최소', candidate: cost, fellBack },
+  ]
+}
+
+function DomainBadge({ formulation }: { formulation: Formulation }) {
+  const d = applicabilityDomain(formulation)
+  const map = {
+    in:   { label: '신뢰', color: '#15803d', bg: '#dcfce7' },
+    edge: { label: '경계', color: '#d97706', bg: '#fef9c3' },
+    out:  { label: '외삽', color: '#dc2626', bg: '#fee2e2' },
+  } as const
+  const m = map[d.status]
+  return (
+    <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold"
+      style={{ color: m.color, background: m.bg, border: `1px solid ${m.color}44` }}
+      title={d.flags.length ? d.flags.join('\n') : '검증 범위 내'}>
+      도메인 {m.label}
+    </span>
+  )
+}
+
+// 핵심 조성 knob을 "N-PMI 18 / g-ABS 28 / AN 28% …" 형식으로 압축
+function formatKnobs(f: Formulation): string {
+  const parts: { label: string; v: number; suffix?: string }[] = [
+    { label: 'N-PMI', v: f.npmi },
+    { label: 'g-ABS', v: f.gAbs },
+    { label: 'AN', v: f.anContent, suffix: '%' },
+    { label: 'PC', v: f.pc },
+    { label: 'αMSAN', v: f.alphaMsan },
+    { label: '탈크', v: f.talc },
+    { label: 'GF', v: f.glassFiber },
+    { label: 'CF', v: f.carbonFiber },
+    { label: '인계FR', v: f.phosphorusFr },
+    { label: '나노클레이', v: f.nanoclay },
+    { label: 'EMA', v: f.ema },
+    { label: 'UHMW-SR', v: f.uhmwSr },
+    { label: 'MBS', v: f.mbs },
+    { label: 'SEBS', v: f.sebs },
+  ]
+  // N-PMI, g-ABS, AN은 항상 표시. 나머지는 0이 아닐 때만.
+  const always = new Set(['N-PMI', 'g-ABS', 'AN'])
+  return parts
+    .filter(p => always.has(p.label) || p.v > 0)
+    .map(p => `${p.label} ${p.v}${p.suffix ?? ''}`)
+    .join(' / ')
+}
+
+function OptimalCard({ pick, onLoad }: { pick: OptimalPick; onLoad: (f: Formulation) => void }) {
+  const { candidate: c } = pick
+  const p = c.prediction
+  const range = (band: { value: number; low: number; high: number }, digits = 0) =>
+    `${band.value.toFixed(digits)} (${band.low.toFixed(digits)}~${band.high.toFixed(digits)})`
+  return (
+    <div className="rounded-lg border border-amber-200 bg-white p-3 flex flex-col gap-2 shadow-sm">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <span className="text-lg">{pick.icon}</span>
+          <span className="text-sm font-bold text-gray-700">{pick.title}</span>
+        </div>
+        <DomainBadge formulation={c.formulation} />
+      </div>
+      <p className="text-[11px] text-gray-500">
+        {pick.why} · #{c.rank} · <ScoreBadge score={c.score} pass={c.specAllPass} />
+        {pick.fellBack && <span className="ml-1 text-amber-600">스펙 미통과(차선)</span>}
+      </p>
+
+      {/* 헤드라인: 설정값 */}
+      <div className="rounded bg-amber-50 border border-amber-100 px-2 py-1.5">
+        <p className="text-[10px] text-amber-700 font-semibold mb-0.5">설정값</p>
+        <p className="text-xs font-mono text-gray-800 leading-snug break-keep">{formatKnobs(c.formulation)}</p>
+      </div>
+
+      {/* 예측 물성 (95% 범위) */}
+      <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px] font-mono">
+        {[
+          ['HDT', range(p.hdt, 1), '℃'],
+          ['Izod', range(p.izod, 1), 'kJ/m²'],
+          ['인장', range(p.tensile, 0), 'MPa'],
+          ['MFI', range(p.mfi, 1), 'g/10min'],
+          ['VOC', range(p.voc, 0), 'µg/g'],
+          ['원가', range(p.cost, 0), '₩/kg'],
+        ].map(([k, v, u]) => (
+          <div key={k} className="flex justify-between gap-1">
+            <span className="text-gray-400">{k}</span>
+            <span className="text-gray-700">{v}<span className="text-gray-400"> {u}</span></span>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center justify-between text-[11px]">
+        <span className="text-gray-500">UL-94 <span className="font-semibold text-gray-700">{p.ul94}</span></span>
+        <span className="text-gray-500">세그먼트 <span className="font-semibold text-gray-700">{p.segment}</span></span>
+      </div>
+
+      <Button size="sm" variant="outline" className="h-7 text-xs mt-0.5"
+        onClick={() => onLoad(c.formulation)}>
+        예측 탭에 로드
+      </Button>
+    </div>
+  )
+}
+
+function OptimalSettingsPanel({ results, onLoad }: { results: CandidateResult[]; onLoad: (f: Formulation) => void }) {
+  const picks = useMemo(() => pickOptimal(results), [results])
+  if (picks.length === 0) return null
+  return (
+    <Card className="border-amber-300 bg-amber-50/40">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-1.5">🎯 최적 셋팅값</CardTitle>
+        <p className="text-[11px] text-gray-500">
+          목표별로 가장 좋은 배합과 설정값입니다. 표를 뒤지지 않아도 바로 이 값을 적용하면 됩니다.
+        </p>
+      </CardHeader>
+      <CardContent className="pb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+          {picks.map(pick => (
+            <OptimalCard key={pick.key} pick={pick} onLoad={onLoad} />
+          ))}
+        </div>
+        <p className="text-[10px] text-gray-400 mt-2">
+          탐색 범위·목표(좌측)를 바꾸면 최적값도 갱신됩니다. 도메인 '경계/외삽'은 확인실험을 권장합니다.
+        </p>
+      </CardContent>
+    </Card>
+  )
+}
+
 function SearchTab({ onLoadFormulation }: { onLoadFormulation: (f: Formulation) => void }) {
   const [config, setConfig]   = useState<SearchConfig>(DEFAULT_SEARCH_CONFIG)
   const [target, setTarget]   = useState<SearchTarget>(DEFAULT_TARGET)
@@ -1708,6 +1872,8 @@ function SearchTab({ onLoadFormulation }: { onLoadFormulation: (f: Formulation) 
 
         {results.length > 0 && (
           <>
+            <OptimalSettingsPanel results={results} onLoad={onLoadFormulation} />
+
             <Card>
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
