@@ -116,37 +116,74 @@ const DEFAULT_FORM: Formulation = {
   silane: 0, wax: 0, hals: 0, heatStabilizer: 0, metalDeact: 0, antistatic: 0,
 }
 
-const PRESETS: Record<string, Partial<Formulation>> = {
-  '표준 (충격 우수)': {
-    npmi: 14, gAbs: 32, anContent: 27,
-    cbMB: 2.5, antioxidant: 0.5, lubricant: 1.0,
-    injTemp: 250, moldTemp: 70,
-    pc: 0, alphaMsan: 0, nanoclay: 0,
-    ema: 5, uhmwSr: 2, mbs: 0, sebs: 0, acrylicIm: 0,
-    phosphorusFr: 0, ptfe: 0,
-    talc: 0, glassFiber: 0, carbonFiber: 0,
-    silane: 0, wax: 0, hals: 0, heatStabilizer: 0, metalDeact: 0, antistatic: 0,
+// ──────────────────────────────────────────────
+// 최적 계산 프리셋 — 정적 배합 대신 옵티마이저로 목적별 최적 배합을 계산
+// ──────────────────────────────────────────────
+type Objective = 'impact' | 'heat' | 'golden'
+
+// 목적별 탐색 구성 (DEFAULT_SEARCH_CONFIG 기반 + 범위 활성화). maxCombinations ~6000–8000.
+const OBJECTIVE_CONFIGS: Record<Objective, SearchConfig> = {
+  // 표준(충격): Izod 최대화 (HDT≥90 필터)
+  impact: {
+    ...DEFAULT_SEARCH_CONFIG,
+    gAbs:      { min: 24, max: 40, step: 3, enabled: true },
+    npmi:      { min: 8,  max: 18, step: 2, enabled: true },
+    anContent: { min: 24, max: 30, step: 2, enabled: true },
+    ema:       { min: 0,  max: 8,  step: 2, enabled: true },
+    uhmwSr:    { min: 0,  max: 4,  step: 2, enabled: true },
   },
-  '고내열형 (Tg↑)': {
-    npmi: 22, gAbs: 25, anContent: 30,
-    cbMB: 2.5, antioxidant: 0.5, lubricant: 1.0,
-    injTemp: 260, moldTemp: 70,
-    pc: 10, alphaMsan: 0, nanoclay: 3,
-    ema: 0, uhmwSr: 0, mbs: 0, sebs: 0, acrylicIm: 0,
-    phosphorusFr: 0, ptfe: 0,
-    talc: 8, glassFiber: 0, carbonFiber: 0,
-    silane: 0.2, wax: 0, hals: 0, heatStabilizer: 0, metalDeact: 0, antistatic: 0,
+  // 고내열형: HDT 최대화
+  heat: {
+    ...DEFAULT_SEARCH_CONFIG,
+    npmi:      { min: 10, max: 25, step: 2, enabled: true },
+    gAbs:      { min: 18, max: 30, step: 3, enabled: true },
+    anContent: { min: 26, max: 32, step: 2, enabled: true },
+    pc:        { min: 0,  max: 30, step: 5, enabled: true },
+    talc:      { min: 0,  max: 15, step: 5, enabled: true },
+    nanoclay:  { min: 0,  max: 5,  step: 1, enabled: true },
   },
-  '골든존 (내열+충격)': {
-    npmi: 18, gAbs: 28, anContent: 28,
-    cbMB: 2.5, antioxidant: 0.5, lubricant: 1.0,
-    injTemp: 252, moldTemp: 70,
-    pc: 5, alphaMsan: 0, nanoclay: 2,
-    ema: 4, uhmwSr: 1.5, mbs: 0, sebs: 0, acrylicIm: 0,
-    phosphorusFr: 0, ptfe: 0,
-    talc: 5, glassFiber: 0, carbonFiber: 0,
-    silane: 0.1, wax: 0, hals: 0, heatStabilizer: 0, metalDeact: 0, antistatic: 0,
+  // 골든존: 내열+충격 균형
+  golden: {
+    ...DEFAULT_SEARCH_CONFIG,
+    npmi:      { min: 14, max: 25, step: 2, enabled: true },
+    gAbs:      { min: 22, max: 34, step: 2, enabled: true },
+    anContent: { min: 26, max: 30, step: 2, enabled: true },
+    talc:      { min: 0,  max: 12, step: 4, enabled: true },
+    pc:        { min: 0,  max: 20, step: 5, enabled: true },
+    nanoclay:  { min: 0,  max: 4,  step: 2, enabled: true },
+    ema:       { min: 0,  max: 6,  step: 3, enabled: true },
+    uhmwSr:    { min: 0,  max: 3,  step: 3, enabled: true },
   },
+}
+
+const OBJECTIVE_META: Record<Objective, { label: string }> = {
+  impact: { label: '표준 (충격 우수)' },
+  heat:   { label: '고내열형 (Tg↑)' },
+  golden: { label: '골든존 (내열+충격)' },
+}
+
+// 후보 목록에서 목적별 규칙으로 최적 배합 선택 (순수 함수)
+function pickByObjective(cands: CandidateResult[], obj: Objective): Formulation {
+  if (cands.length === 0) throw new Error('후보 없음')
+  if (obj === 'heat') {
+    return cands.reduce((best, c) => c.prediction.hdt.value > best.prediction.hdt.value ? c : best).formulation
+  }
+  if (obj === 'impact') {
+    const qualified = cands.filter(c => c.prediction.hdt.value >= 90)
+    const pool = qualified.length > 0 ? qualified : cands
+    return pool.reduce((best, c) => c.prediction.izod.value > best.prediction.izod.value ? c : best).formulation
+  }
+  // golden: izod≥10 && hdt≥100 존 우선 → 균형 마진(두 정규화 마진의 최솟값) 최대화
+  // (양쪽 임계를 모두 넉넉히 넘긴 후보를 보상 — 한쪽 극단 방지).
+  // 존 미달이면 closest-to-zone: hdt/140 + izod/40 최대.
+  const inZone = cands.filter(c => c.prediction.izod.value >= 10 && c.prediction.hdt.value >= 100)
+  if (inZone.length > 0) {
+    const balMargin = (c: CandidateResult) =>
+      Math.min((c.prediction.hdt.value - 100) / 40, (c.prediction.izod.value - 10) / 30)
+    return inZone.reduce((best, c) => balMargin(c) > balMargin(best) ? c : best).formulation
+  }
+  const bal = (c: CandidateResult) => c.prediction.hdt.value / 140 + c.prediction.izod.value / 40
+  return cands.reduce((best, c) => bal(c) > bal(best) ? c : best).formulation
 }
 
 // ──────────────────────────────────────────────
@@ -695,6 +732,27 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
     try { return JSON.parse(localStorage.getItem('abs_saved_presets') ?? '{}') } catch { return {} }
   })
   const [presetName, setPresetName] = useState('')
+  const [optimizing, setOptimizing] = useState<Objective | null>(null)
+  const [optimizeNote, setOptimizeNote] = useState<string | null>(null)
+
+  // 목적별 최적 배합을 옵티마이저로 계산해 폼에 적용
+  const runOptimize = (obj: Objective) => {
+    if (optimizing) return
+    setOptimizing(obj)
+    setOptimizeNote(null)
+    // setTimeout으로 UI가 먼저 리페인트되게 한 뒤 무거운 계산 실행 (SearchTab.handleRun 방식)
+    setTimeout(() => {
+      try {
+        const { candidates } = runGridSearch(OBJECTIVE_CONFIGS[obj], DEFAULT_TARGET, 50, 8000)
+        const best = pickByObjective(candidates, obj)
+        const pred = predictColdStart(best)
+        setForm(best)
+        setOptimizeNote(`최적 배합 적용됨 — HDT ${pred.hdt.value.toFixed(0)} / Izod ${pred.izod.value.toFixed(0)}`)
+      } finally {
+        setOptimizing(null)
+      }
+    }, 30)
+  }
 
   const savePreset = () => {
     const name = presetName.trim()
@@ -793,14 +851,22 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
         <CardContent className="space-y-0 pb-4">
           {/* 프리셋 */}
           <div className="pb-3 border-b mb-2 space-y-2">
-            <div className="flex gap-2 flex-wrap">
-              {Object.entries(PRESETS).map(([name, preset]) => (
-                <Button key={name} size="sm" variant="outline" className="h-7 text-xs"
-                  onClick={() => setForm(f => ({ ...f, ...preset }))}>
-                  ▸ {name}
+            <div className="flex gap-2 flex-wrap items-center">
+              {(Object.keys(OBJECTIVE_META) as Objective[]).map(obj => (
+                <Button key={obj} size="sm" variant="outline" className="h-7 text-xs"
+                  disabled={optimizing != null}
+                  title="클릭 시 옵티마이저가 최적 배합을 계산해 채웁니다"
+                  onClick={() => runOptimize(obj)}>
+                  {optimizing === obj ? '⏳ 계산 중…' : `▸ ${OBJECTIVE_META[obj].label}`}
                 </Button>
               ))}
+              <span className="text-[10px] text-gray-400">최적 자동계산</span>
             </div>
+            {optimizeNote && (
+              <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded px-2 py-1">
+                ✅ {optimizeNote}
+              </p>
+            )}
             {Object.keys(savedPresets).length > 0 && (
               <div className="flex gap-1.5 flex-wrap">
                 {Object.entries(savedPresets).map(([name, f]) => (
