@@ -4,6 +4,7 @@
 // 업그레이드: 세그먼트별 보정 + 잔차(RMSE) 기반 불확실성 밴드 + 외삽 인식 확대
 
 import type { PredictionResult } from './physics'
+import { testSigma } from './physics'
 
 export interface CalibProps {
   scale:  number  // 기울기
@@ -196,7 +197,11 @@ export function applyCalibration(
     const range = Math.max(1e-6, c.xMax - c.xMin)
     const distOutside = Math.max(0, v - c.xMax, c.xMin - v)
     const extraUnc = c.rmse * (distOutside / range) * 2
-    const unc = baseUnc + extraUnc
+    // 실측 fit 잔차가 우선하되, 실험 자체 재현성(95%) 보다 좁아질 수 없음:
+    // 최종 밴드 = max(보정 불확실성, 1.96·testSigma(prop, value))
+    const calibUnc = baseUnc + extraUnc
+    const scatterUnc = 1.96 * testSigma(prop, vCal)
+    const unc = Math.max(calibUnc, scatterUnc)
 
     adjusted[prop] = { value: vCal, low: vCal - unc, high: vCal + unc }
     usedConfs.push(fitConfidence(c))

@@ -23,6 +23,10 @@ import {
   setUnitCosts,
   DEFAULT_UNIT_COSTS,
   type UnitCosts,
+  applicabilityDomain,
+  type DomainResult,
+  testSigma,
+  type ScatterProp,
 } from '@/lib/physics'
 import {
   runGridSearch,
@@ -326,9 +330,12 @@ function MetricGauge({
         )}
       </div>
 
-      {/* 오차구간 텍스트 */}
-      <div className="flex justify-between mt-0.5">
+      {/* 실험 예상 범위 (95%) */}
+      <div className="flex justify-between items-baseline mt-0.5">
         <span className="text-[10px] text-gray-300 font-mono">{animLow.toFixed(1)}</span>
+        <span className="text-[9px] text-gray-300 font-mono" title="실험 예상 범위 95% (±)">
+          ±{((animHigh - animLow) / 2).toFixed(1)}
+        </span>
         <span className="text-[10px] text-gray-300 font-mono">{animHigh.toFixed(1)}</span>
       </div>
     </div>
@@ -682,6 +689,7 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
   const [lotName, setLotName] = useState('')
   const [changedKey, setChangedKey] = useState<string | null>(null)
   const [miTab, setMiTab] = useState<'mfi'|'mi200'|'mi250_2'|'mi250_5'>('mfi')
+  const [domainOpen, setDomainOpen] = useState(false)
   const [sensTab, setSensTab] = useState<SensProp>('hdt')
   const [savedPresets, setSavedPresets] = useState<Record<string, Formulation>>(() => {
     try { return JSON.parse(localStorage.getItem('abs_saved_presets') ?? '{}') } catch { return {} }
@@ -718,12 +726,32 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
     onFormulationLoaded()
   }, [loadedFormulation, onFormulationLoaded])
 
+  // 신뢰 도메인 (applicability domain) — 배합이 검증 범위 내인지 평가
+  const domain: DomainResult = useMemo(() => applicabilityDomain({ ...form, san: sanEst }), [form, sanEst])
+
   // 실시간 예측: 슬라이더 변경 즉시 반영
   useEffect(() => {
     if (!compositionOk) return
     const rawPred = predictColdStart({ ...form, san: sanEst })
-    setPred(calibResult ? applyCalibration(rawPred, calibResult) : rawPred)
-  }, [form, sanEst, compositionOk, calibResult, costVersion])
+    const calibrated = calibResult ? applyCalibration(rawPred, calibResult) : rawPred
+    // 도메인 외삽 시 낮은 신뢰도를 정직하게 반영: 표시 밴드를 확대 (edge ×1.5, out ×2.5).
+    // (band 중심값은 유지, low/high만 value 기준으로 대칭 확대)
+    const widen = domain.status === 'out' ? 2.5 : domain.status === 'edge' ? 1.5 : 1
+    if (widen === 1) { setPred(calibrated); return }
+    const wb = (b: { value: number; low: number; high: number }) => ({
+      value: b.value,
+      low: b.value - (b.value - b.low) * widen,
+      high: b.value + (b.high - b.value) * widen,
+    })
+    setPred({
+      ...calibrated,
+      hdt: wb(calibrated.hdt), hdt045: wb(calibrated.hdt045), vicat: wb(calibrated.vicat),
+      izod: wb(calibrated.izod), izodUnnotched: wb(calibrated.izodUnnotched),
+      tensile: wb(calibrated.tensile), tensileCross: wb(calibrated.tensileCross),
+      density: wb(calibrated.density), mfi: wb(calibrated.mfi), mi200: wb(calibrated.mi200),
+      mi250_2: wb(calibrated.mi250_2), mi250_5: wb(calibrated.mi250_5), voc: wb(calibrated.voc),
+    })
+  }, [form, sanEst, compositionOk, calibResult, costVersion, domain.status])
 
   const set = useCallback((key: keyof Formulation) => (v: number) => {
     setForm(f => ({ ...f, [key]: v }))
@@ -1077,10 +1105,37 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
                     </span>
                   )
                 })()}
+                {(() => {
+                  const dmap = {
+                    in:   { label: '신뢰 도메인 ✓',            bg: '#dcfce7', color: '#15803d', border: '#86efac' },
+                    edge: { label: '도메인 경계 — 확인실험 권장', bg: '#fef3c7', color: '#b45309', border: '#f59e0b' },
+                    out:  { label: '외삽 영역 — 예측 신뢰도 낮음', bg: '#fee2e2', color: '#b91c1c', border: '#fca5a5' },
+                  } as const
+                  const d = dmap[domain.status]
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => domain.flags.length > 0 && setDomainOpen(o => !o)}
+                      className="text-xs px-2 py-0.5 rounded font-medium"
+                      style={{ background: d.bg, color: d.color, border: `1px solid ${d.border}`, cursor: domain.flags.length > 0 ? 'pointer' : 'default' }}>
+                      {d.label}{domain.flags.length > 0 ? (domainOpen ? ' ▾' : ` (${domain.flags.length}) ▸`) : ''}
+                    </button>
+                  )
+                })()}
               </div>
             </div>
+            {domainOpen && domain.flags.length > 0 && (
+              <ul className="mt-2 text-[11px] leading-relaxed list-disc list-inside rounded p-2"
+                style={{ background: domain.status === 'out' ? '#fef2f2' : '#fffbeb', color: '#92400e' }}>
+                {domain.flags.map((fl, i) => <li key={i}>{fl}</li>)}
+              </ul>
+            )}
           </CardHeader>
           <CardContent className="pb-3">
+            <p className="text-[10px] text-gray-400 mb-2">
+              범위 = 실제 실험이 들어올 <span className="font-semibold">실험 예상 범위 95%</span> (시험 재현성 1σ 기반)
+              {domain.status !== 'in' && <span className="text-amber-600"> · 도메인 {domain.status === 'out' ? '외삽' : '경계'}로 범위 확대됨</span>}
+            </p>
             <MetricGauge label={SPEC.hdt.label}  {...pred.hdt}  unit={SPEC.hdt.unit}  min={SPEC.hdt.min}  max={SPEC.hdt.max}  target={SPEC.hdt.target}  higherIsBetter={true} />
             <MetricGauge label="HDT (0.45MPa)" {...pred.hdt045} unit="℃" min={90} max={160} higherIsBetter={true} />
             <MetricGauge label={SPEC.vicat.label} {...pred.vicat} unit={SPEC.vicat.unit} min={SPEC.vicat.min} max={SPEC.vicat.max} higherIsBetter={true} />
@@ -1287,6 +1342,180 @@ function ParetoScatter({
         )
       })}
     </svg>
+  )
+}
+
+// ──────────────────────────────────────────────
+// 실험 진행 그래프 (M4): 패리티 플롯 + 누적 MAE 추이
+// ──────────────────────────────────────────────
+type ProgressProp = 'hdt' | 'izod' | 'mfi' | 'voc'
+
+const PROGRESS_PROPS: { key: ProgressProp; label: string; unit: string }[] = [
+  { key: 'hdt',  label: 'HDT',  unit: '℃' },
+  { key: 'izod', label: 'Izod', unit: 'kJ/m²' },
+  { key: 'mfi',  label: 'MFI',  unit: 'g/10min' },
+  { key: 'voc',  label: 'VOC',  unit: 'µg/g' },
+]
+
+// 물성별 시험 재현성(상대 σ) — physics.ts TEST_SCATTER 의 rel 과 일치
+const TEST_SCATTER_REL: Record<ProgressProp, number> = {
+  hdt: 0.025, izod: 0.12, mfi: 0.10, voc: 0.15,
+}
+
+function ExperimentProgressCharts({ records }: { records: ExperimentRecord[] }) {
+  const [prop, setProp] = useState<ProgressProp>('hdt')
+  const meta = PROGRESS_PROPS.find(p => p.key === prop)!
+  const scatterProp = prop as ScatterProp
+
+  // 시간순(과거→현재): records 는 최신순 저장 → 뒤집는다
+  const chrono = [...records].reverse()
+  const pairs = chrono
+    .map(r => ({
+      lot: r.lot,
+      pred: r.prediction[prop].value,
+      meas: r.actual?.[prop],
+    }))
+    .filter((p): p is { lot: string; pred: number; meas: number } => p.meas != null)
+
+  const toggle = (
+    <div className="flex flex-wrap gap-1 mb-3">
+      {PROGRESS_PROPS.map(p => (
+        <button key={p.key} onClick={() => setProp(p.key)}
+          className={`text-xs px-2 py-0.5 rounded border ${
+            prop === p.key
+              ? 'bg-blue-600 text-white border-blue-600'
+              : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
+          }`}>
+          {p.label}
+        </button>
+      ))}
+    </div>
+  )
+
+  if (pairs.length === 0) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">실험 진행 그래프</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {toggle}
+          <p className="text-center text-gray-400 text-xs py-8">
+            실측값이 있는 실험이 없습니다 — M4에서 실측 입력 시 그래프가 채워집니다
+          </p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // ── 패리티 플롯 좌표 ──
+  const allVals = pairs.flatMap(p => [p.pred, p.meas])
+  let lo = Math.min(...allVals), hi = Math.max(...allVals)
+  const span = hi - lo || Math.max(1, hi * 0.1)
+  lo -= span * 0.1; hi += span * 0.1
+  const PW = 300, PAD = { l: 40, r: 12, t: 10, b: 30 }
+  const plot = PW - PAD.l - PAD.r
+  const px = (v: number) => PAD.l + ((v - lo) / (hi - lo)) * plot
+  const py = (v: number) => PAD.t + plot - ((v - lo) / (hi - lo)) * plot
+  const PH = PAD.t + plot + PAD.b
+
+  // ±1.96σ band polygon (대각선 따라). diag x=lo..hi
+  const bandHi = (v: number) => v + 1.96 * testSigma(scatterProp, v)
+  const bandLo = (v: number) => v - 1.96 * testSigma(scatterProp, v)
+  const bandPath =
+    `M ${px(lo)} ${py(bandHi(lo))} L ${px(hi)} ${py(bandHi(hi))} ` +
+    `L ${px(hi)} ${py(bandLo(hi))} L ${px(lo)} ${py(bandLo(lo))} Z`
+
+  const dotColor = (pred: number, meas: number) => {
+    const half = 1.96 * testSigma(scatterProp, pred)
+    const d = Math.abs(meas - pred)
+    if (d <= half) return { fill: '#22c55e', stroke: '#16a34a' }
+    if (d <= 2 * half) return { fill: '#f59e0b', stroke: '#d97706' }
+    return { fill: '#ef4444', stroke: '#dc2626' }
+  }
+
+  // ── 누적 MAPE 추이 ──
+  const cum: { n: number; mape: number }[] = []
+  let sumPct = 0
+  pairs.forEach((p, i) => {
+    sumPct += Math.abs(p.meas - p.pred) / (Math.abs(p.meas) || 1) * 100
+    cum.push({ n: i + 1, mape: sumPct / (i + 1) })
+  })
+  const refPct = TEST_SCATTER_REL[prop] * 100
+  const maxMape = Math.max(refPct, ...cum.map(c => c.mape)) * 1.15
+  const TW = 300, TPAD = { l: 40, r: 12, t: 10, b: 30 }, TH = 200
+  const tplotW = TW - TPAD.l - TPAD.r, tplotH = TH - TPAD.t - TPAD.b
+  const tx = (n: number) => TPAD.l + (pairs.length <= 1 ? tplotW / 2 : ((n - 1) / (pairs.length - 1)) * tplotW)
+  const ty = (m: number) => TPAD.t + tplotH - (m / maxMape) * tplotH
+  const linePts = cum.map(c => `${tx(c.n)},${ty(c.mape)}`).join(' ')
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm">실험 진행 그래프 <span className="text-[10px] font-normal text-gray-400">({meta.label} · N={pairs.length})</span></CardTitle>
+      </CardHeader>
+      <CardContent>
+        {toggle}
+        <div className="grid md:grid-cols-2 gap-4">
+          {/* CHART 1 — 패리티 플롯 */}
+          <div>
+            <p className="text-[11px] text-gray-500 mb-1">예측 vs 실측 (패리티)</p>
+            <svg viewBox={`0 0 ${PW} ${PH}`} className="w-full">
+              {/* ±시험재현성 band */}
+              <path d={bandPath} fill="#22c55e" fillOpacity={0.10} />
+              {/* y=x 대각선 */}
+              <line x1={px(lo)} y1={py(lo)} x2={px(hi)} y2={py(hi)} stroke="#94a3b8" strokeWidth={1} strokeDasharray="4 3" />
+              {/* 축 */}
+              <line x1={PAD.l} y1={PAD.t} x2={PAD.l} y2={PAD.t + plot} stroke="#cbd5e1" strokeWidth={1} />
+              <line x1={PAD.l} y1={PAD.t + plot} x2={PAD.l + plot} y2={PAD.t + plot} stroke="#cbd5e1" strokeWidth={1} />
+              <text x={PAD.l - 4} y={PAD.t + 8} textAnchor="end" fontSize={8} fill="#94a3b8">실측</text>
+              <text x={PAD.l + plot / 2} y={PH - 4} textAnchor="middle" fontSize={8} fill="#94a3b8">예측 ({meta.unit})</text>
+              {[lo, (lo + hi) / 2, hi].map((v, i) => (
+                <text key={`yt${i}`} x={PAD.l - 4} y={py(v) + 3} textAnchor="end" fontSize={7} fill="#94a3b8">{v.toFixed(0)}</text>
+              ))}
+              {[lo, hi].map((v, i) => (
+                <text key={`xt${i}`} x={px(v)} y={PAD.t + plot + 10} textAnchor="middle" fontSize={7} fill="#94a3b8">{v.toFixed(0)}</text>
+              ))}
+              {pairs.map((p, i) => {
+                const c = dotColor(p.pred, p.meas)
+                const errPct = Math.abs(p.meas - p.pred) / (Math.abs(p.meas) || 1) * 100
+                return (
+                  <circle key={i} cx={px(p.pred)} cy={py(p.meas)} r={4} fill={c.fill} fillOpacity={0.85} stroke={c.stroke} strokeWidth={1}>
+                    <title>{p.lot} · 예측 {p.pred.toFixed(1)} / 실측 {p.meas.toFixed(1)} {meta.unit} · 오차 {errPct.toFixed(1)}%</title>
+                  </circle>
+                )
+              })}
+            </svg>
+          </div>
+          {/* CHART 2 — 누적 MAPE 추이 */}
+          <div>
+            <p className="text-[11px] text-gray-500 mb-1">누적 실험 수 → 평균오차(MAPE) 추이</p>
+            <svg viewBox={`0 0 ${TW} ${TH}`} className="w-full">
+              {/* 시험 재현성 한계선 */}
+              <line x1={TPAD.l} y1={ty(refPct)} x2={TPAD.l + tplotW} y2={ty(refPct)} stroke="#94a3b8" strokeWidth={1} strokeDasharray="4 3" />
+              <text x={TPAD.l + tplotW} y={ty(refPct) - 3} textAnchor="end" fontSize={7} fill="#94a3b8">시험 재현성 한계 {refPct.toFixed(0)}%</text>
+              {/* 축 */}
+              <line x1={TPAD.l} y1={TPAD.t} x2={TPAD.l} y2={TPAD.t + tplotH} stroke="#cbd5e1" strokeWidth={1} />
+              <line x1={TPAD.l} y1={TPAD.t + tplotH} x2={TPAD.l + tplotW} y2={TPAD.t + tplotH} stroke="#cbd5e1" strokeWidth={1} />
+              <text x={TPAD.l - 4} y={TPAD.t + 8} textAnchor="end" fontSize={8} fill="#94a3b8">MAPE%</text>
+              <text x={TPAD.l + tplotW / 2} y={TH - 4} textAnchor="middle" fontSize={8} fill="#94a3b8">실험 수 (N)</text>
+              {[0, maxMape / 2, maxMape].map((v, i) => (
+                <text key={`tyt${i}`} x={TPAD.l - 4} y={ty(v) + 3} textAnchor="end" fontSize={7} fill="#94a3b8">{v.toFixed(0)}</text>
+              ))}
+              {cum.length > 1 && <polyline points={linePts} fill="none" stroke="#2563eb" strokeWidth={1.5} />}
+              {cum.map(c => (
+                <circle key={c.n} cx={tx(c.n)} cy={ty(c.mape)} r={3} fill="#2563eb">
+                  <title>N={c.n} · 누적 MAPE {c.mape.toFixed(1)}%</title>
+                </circle>
+              ))}
+            </svg>
+          </div>
+        </div>
+        <p className="text-[10px] text-gray-400 mt-2">
+          녹색 = 시험 재현성(±1.96σ) 이내, 황색 = 2배 이내, 적색 = 그 외. 누적 MAPE가 재현성 한계선에 가까울수록 모델이 실험 자체만큼 정확합니다.
+        </p>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -1876,6 +2105,7 @@ function TrackerTab({ records, onUpdateRecord, onBulkAdd }: {
   }
 
   return (
+    <div className="space-y-4">
     <Card>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
@@ -1987,6 +2217,10 @@ function TrackerTab({ records, onUpdateRecord, onBulkAdd }: {
         })()}
       </CardContent>
     </Card>
+    {records.some(r => r.actual && (r.actual.hdt != null || r.actual.izod != null || r.actual.mfi != null || r.actual.voc != null)) && (
+      <ExperimentProgressCharts records={records} />
+    )}
+    </div>
   )
 }
 

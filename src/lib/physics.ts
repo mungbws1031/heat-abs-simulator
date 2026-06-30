@@ -482,6 +482,110 @@ export function classifySegment(f: Formulation): 'ABS' | 'ABS+PC' | 'PC+ABS' | '
 }
 
 // ──────────────────────────────────────────────
+// 실험 재현성(scatter) 모델 — "실험 예상 범위 (95%)"
+// ──────────────────────────────────────────────
+// 실제 ABS 시험은 고유 반복정밀도(repeatability) 산포를 가진다 (inter-lot/inter-lab, 1σ).
+// 물성별 상대(rel)·절대(abs) 산포를 결합해 1σ = sqrt((rel·value)² + abs²),
+// 95% 실험 예상 범위 = value ± 1.96σ. (기존 고정 ±% 밴드를 대체)
+export type ScatterProp =
+  | 'hdt' | 'vicat' | 'izod' | 'tensile' | 'mfi' | 'density' | 'voc'
+
+const TEST_SCATTER: Record<ScatterProp, { rel: number; abs: number }> = {
+  hdt:     { rel: 0.025, abs: 1.5 },   // ℃ : ~±2-3℃ 95%
+  vicat:   { rel: 0.02,  abs: 1.5 },
+  izod:    { rel: 0.12,  abs: 1.0 },   // notched Izod scatters a lot
+  tensile: { rel: 0.05,  abs: 1.0 },
+  mfi:     { rel: 0.10,  abs: 0.5 },
+  density: { rel: 0.003, abs: 0.002 },
+  voc:     { rel: 0.15,  abs: 3 },
+}
+
+// 물성별 1σ (실험 재현성). 알려지지 않은 파생물성은 같은 계열의 σ를 재사용한다.
+export function testSigma(prop: ScatterProp, value: number): number {
+  const s = TEST_SCATTER[prop]
+  return Math.sqrt((s.rel * value) ** 2 + s.abs ** 2)
+}
+
+// value ± 1.96σ (95% 실험 예상 범위). widen 으로 도메인 신뢰도 반영 가능(기본 1.0).
+function scatterBand(prop: ScatterProp, value: number, widen = 1): { value: number; low: number; high: number } {
+  const half = 1.96 * testSigma(prop, value) * widen
+  return { value, low: value - half, high: value + half }
+}
+
+// ──────────────────────────────────────────────
+// 적용 가능 도메인 (Applicability Domain, 신뢰 도메인)
+// ──────────────────────────────────────────────
+// 모델이 grounding/검증된 입력 범위(레퍼런스 등급 + 물리적 한계)를 벗어나면 경고한다.
+const DOMAIN_RANGES: Array<{ key: keyof Formulation; label: string; min: number; max: number; unit: string }> = [
+  { key: 'npmi',         label: 'N-PMI',   min: 0,   max: 25, unit: 'wt%' },
+  { key: 'gAbs',         label: 'g-ABS',   min: 10,  max: 35, unit: 'wt%' },
+  { key: 'anContent',    label: 'AN 함량', min: 22,  max: 32, unit: '%' },
+  { key: 'pc',           label: 'PC',      min: 0,   max: 60, unit: 'wt%' },
+  { key: 'alphaMsan',    label: 'αMSAN',   min: 0,   max: 30, unit: 'wt%' },
+  { key: 'talc',         label: '탈크',    min: 0,   max: 25, unit: 'wt%' },
+  { key: 'glassFiber',   label: 'GF',      min: 0,   max: 35, unit: 'wt%' },
+  { key: 'carbonFiber',  label: 'CF',      min: 0,   max: 20, unit: 'wt%' },
+  { key: 'phosphorusFr', label: '인계 FR', min: 0,   max: 25, unit: 'wt%' },
+  { key: 'nanoclay',     label: '나노클레이', min: 0, max: 6,  unit: 'wt%' },
+  { key: 'injTemp',      label: '사출온도', min: 220, max: 290, unit: '℃' },
+]
+
+export interface DomainResult {
+  status: 'in' | 'edge' | 'out'
+  flags: string[]
+}
+
+export function applicabilityDomain(f: Formulation): DomainResult {
+  const flags: string[] = []
+  let outCount = 0
+  let edgeCount = 0
+
+  for (const r of DOMAIN_RANGES) {
+    const v = (f[r.key] as number) ?? 0
+    const span = r.max - r.min
+    if (v > r.max) {
+      const pastFrac = (v - r.max) / span
+      flags.push(`${r.label} ${v}${r.unit} — 검증 범위(≤${r.max}) 초과`)
+      if (pastFrac > 0.20) outCount++; else edgeCount++
+    } else if (v < r.min) {
+      const pastFrac = (r.min - v) / span
+      flags.push(`${r.label} ${v}${r.unit} — 검증 범위(≥${r.min}) 미만`)
+      if (pastFrac > 0.20) outCount++; else edgeCount++
+    } else if (v > r.max - span * 0.05 && v <= r.max) {
+      // 상한 경계 근접 (범위 내 상위 5%) — 하한(대개 0)은 정상 배합이므로 제외
+      edgeCount++
+    }
+  }
+
+  // ── 미검증 조합 규칙 (레퍼런스가 커버하지 않는 조합)
+  const rubber = f.gAbs + f.mbs + f.sebs + f.acrylicIm + f.uhmwSr
+  if (f.glassFiber >= 25 && rubber >= 30) {
+    outCount++
+    flags.push('GF 고함량 + 고무 고함량 조합 — 미검증 (강성/충격 trade-off 외삽)')
+  }
+  if (f.pc >= 20 && f.phosphorusFr >= 15) {
+    edgeCount++
+    flags.push('PC + 높은 인계 FR 조합 — 미검증 (가수분해·난연 상호작용)')
+  }
+  if (f.glassFiber >= 15 && f.carbonFiber >= 10) {
+    edgeCount++
+    flags.push('GF + CF 하이브리드 충전 조합 — 미검증')
+  }
+  if (f.pc >= 40 && f.npmi >= 15) {
+    edgeCount++
+    flags.push('고 PC + 고 N-PMI 이중 내열 조합 — 미검증')
+  }
+
+  const status: DomainResult['status'] =
+    outCount >= 1 ? 'out'
+    : edgeCount >= 2 ? 'out'   // 다수 경계 = 외삽 취급
+    : edgeCount >= 1 ? 'edge'
+    : 'in'
+
+  return { status, flags }
+}
+
+// ──────────────────────────────────────────────
 // 메인 예측 함수
 // ──────────────────────────────────────────────
 export function predictColdStart(f: Formulation): PredictionResult {
@@ -632,20 +736,23 @@ export function predictColdStart(f: Formulation): PredictionResult {
   // HDT @ 0.45 MPa: 저하중 조건 — 경험식 hdt045 ≈ hdt_1.8 + 15℃ (GF/탈크 고함량은 차이 축소)
   const hdt045Val = hdtVal + 15 - f.glassFiber * 0.22 - f.talc * 0.15 - f.carbonFiber * 0.25
 
+  void err  // (cost 외 모든 물성은 실험 재현성 기반 scatterBand 사용)
+
   return {
-    hdt:     err(hdtVal,    0.07),
-    hdt045:  err(hdt045Val, 0.07),
-    vicat:   err(vicatVal,  0.06),
-    izod:    err(izodFinal, 0.20),
-    izodUnnotched: err(izodUnnotchedVal, 0.25),
-    tensile: err(tensileVal, 0.08),
-    tensileCross: err(tensileCrossVal, 0.08),
-    density: { value: densityVal, low: densityVal * 0.995, high: densityVal * 1.005 },
-    mfi:     err(mfiVal,    0.25),
-    mi200:   err(mi200Val,  0.25),
-    mi250_2: err(mi250_2Val, 0.25),
-    mi250_5: err(mi250_5Val, 0.25),
-    voc:     err(vocVal,    0.30),
+    // 실험 예상 범위 (95%) = value ± 1.96σ (TEST_SCATTER 기반 실험 재현성)
+    hdt:     scatterBand('hdt', hdtVal),
+    hdt045:  scatterBand('hdt', hdt045Val),
+    vicat:   scatterBand('vicat', vicatVal),
+    izod:    scatterBand('izod', izodFinal),
+    izodUnnotched: scatterBand('izod', izodUnnotchedVal),
+    tensile: scatterBand('tensile', tensileVal),
+    tensileCross: scatterBand('tensile', tensileCrossVal),
+    density: scatterBand('density', densityVal),
+    mfi:     scatterBand('mfi', mfiVal),
+    mi200:   scatterBand('mfi', mi200Val),
+    mi250_2: scatterBand('mfi', mi250_2Val),
+    mi250_5: scatterBand('mfi', mi250_5Val),
+    voc:     scatterBand('voc', vocVal),
     cost:    err(costVal,   0.10),
     ul94,
     segment,
