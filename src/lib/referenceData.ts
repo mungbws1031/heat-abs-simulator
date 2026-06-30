@@ -6,6 +6,7 @@
 import type { Formulation, PredictionResult } from './physics'
 import { classifySegment } from './physics'
 import type { CalibPair } from './calibration'
+import { fitCalibration, applyCalibration, featuresFromFormulation } from './calibration'
 
 export interface ReferenceGrade {
   id: string
@@ -180,6 +181,7 @@ export function referenceCalibPairs(
     const r = predict(f)
     return {
       segment: classifySegment(f),
+      features: featuresFromFormulation(f),
       predictedHdt: r.hdt.value,
       predictedIzod: r.izod.value,
       predictedVoc: r.voc.value,
@@ -194,4 +196,53 @@ export function referenceCalibPairs(
       // voc: ref 없음 → 생략
     }
   })
+}
+
+// ──────────────────────────────────────────────
+// LOOCV (leave-one-out) — 정직한 그라운딩 검증 (누수 방지)
+// 각 등급에 대해 나머지 15개로 보정 fit → 보류된 등급을 예측 → MAPE 집계.
+// linear=true면 선형만(formulation 미전달), false면 비선형(LWR, formulation 전달).
+// ──────────────────────────────────────────────
+const LOOCV_PROPS = ['hdt', 'izod', 'tensile', 'mfi', 'vicat'] as const
+
+export interface LOOCVResult {
+  perProperty: Record<string, { mapePct: number; n: number }>
+  overallMapePct: number
+}
+
+export function validateLOOCV(
+  predict: (f: Formulation) => PredictionResult,
+  base: Formulation,
+  nonlinear = true,
+): LOOCVResult {
+  const allPairs = referenceCalibPairs(predict, base)
+  const propAcc: Record<string, { pctSum: number; n: number }> = {}
+  let overallSum = 0, overallN = 0
+
+  REFERENCE_GRADES.forEach((grade, idx) => {
+    const trainPairs = allPairs.filter((_, i) => i !== idx)
+    const cal = fitCalibration(trainPairs)
+    const f: Formulation = { ...base, ...grade.form }
+    const r = nonlinear ? applyCalibration(predict(f), cal, f) : applyCalibration(predict(f), cal)
+    const predicted: Record<string, number> = {
+      hdt: r.hdt.value, izod: r.izod.value, tensile: r.tensile.value,
+      mfi: r.mfi.value, vicat: r.vicat.value,
+    }
+    for (const p of LOOCV_PROPS) {
+      const refVal = grade.ref[p]
+      if (refVal == null || refVal === 0) continue
+      const pctErr = Math.abs(predicted[p] - refVal) / Math.abs(refVal) * 100
+      ;(propAcc[p] ??= { pctSum: 0, n: 0 })
+      propAcc[p].pctSum += pctErr
+      propAcc[p].n += 1
+      overallSum += pctErr
+      overallN += 1
+    }
+  })
+
+  const perProperty: LOOCVResult['perProperty'] = {}
+  for (const p of Object.keys(propAcc)) {
+    perProperty[p] = { mapePct: propAcc[p].pctSum / propAcc[p].n, n: propAcc[p].n }
+  }
+  return { perProperty, overallMapePct: overallN > 0 ? overallSum / overallN : 0 }
 }

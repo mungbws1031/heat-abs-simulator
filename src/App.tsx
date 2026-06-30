@@ -59,7 +59,7 @@ interface CalibPoint {
   lot: string
   npmi: number; gAbs: number; anContent: number; injTemp: number
   talc: number; glassFiber: number; pc: number; phosphorusFr: number
-  carbonFiber: number; nanoclay: number
+  carbonFiber: number; nanoclay: number; alphaMsan: number
   segment: string
   predictedHdt: number; predictedIzod: number; predictedVoc: number
   predictedTensile: number; predictedMfi: number; predictedVicat: number
@@ -790,8 +790,9 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
   // 실시간 예측: 슬라이더 변경 즉시 반영
   useEffect(() => {
     if (!compositionOk) return
-    const rawPred = predictColdStart({ ...form, san: sanEst })
-    const calibrated = calibResult ? applyCalibration(rawPred, calibResult) : rawPred
+    const fullForm = { ...form, san: sanEst }
+    const rawPred = predictColdStart(fullForm)
+    const calibrated = calibResult ? applyCalibration(rawPred, calibResult, fullForm) : rawPred
     // 도메인 외삽 시 낮은 신뢰도를 정직하게 반영: 표시 밴드를 확대 (edge ×1.5, out ×2.5).
     // (band 중심값은 유지, low/high만 value 기준으로 대칭 확대)
     const widen = domain.status === 'out' ? 2.5 : domain.status === 'edge' ? 1.5 : 1
@@ -2648,7 +2649,7 @@ function M5CalibrationTab({
     const p: CalibPoint = {
       id: Date.now(),
       lot: lot || `CAL-${calibPoints.length + 1}`,
-      npmi, gAbs, anContent, injTemp, talc, glassFiber, pc, phosphorusFr, carbonFiber, nanoclay,
+      npmi, gAbs, anContent, injTemp, talc, glassFiber, pc, phosphorusFr, carbonFiber, nanoclay, alphaMsan: 0,
       segment: raw.segment,
       predictedHdt:  raw.hdt.value,
       predictedIzod: raw.izod.value,
@@ -2687,6 +2688,7 @@ function M5CalibrationTab({
       phosphorusFr: r.formulation.phosphorusFr,
       carbonFiber:  r.formulation.carbonFiber,
       nanoclay:     r.formulation.nanoclay,
+      alphaMsan:    r.formulation.alphaMsan,
       segment:      r.prediction.segment,
       predictedHdt:  r.prediction.hdt.value,
       predictedIzod: r.prediction.izod.value,
@@ -2953,14 +2955,23 @@ function M5CalibrationTab({
                   </Button>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-[10px] px-2 py-0.5 rounded font-semibold"
-                    style={calibResult.mode === 'segment'
+                    style={calibResult.mode === 'nonlinear'
+                      ? { background: '#fef3c7', color: '#b45309', border: '1px solid #fcd34d' }
+                      : calibResult.mode === 'segment'
                       ? { background: '#ede9fe', color: '#6d28d9', border: '1px solid #c4b5fd' }
                       : { background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1' }}>
-                    {calibResult.mode === 'segment' ? '세그먼트별 보정' : '전역 보정'}
+                    {calibResult.mode === 'nonlinear'
+                      ? `비선형 보정(LWR) — ${calibResult.points.length}점`
+                      : calibResult.mode === 'segment' ? '세그먼트별 보정' : '전역 보정'}
                   </span>
                 </div>
+                {calibResult.mode === 'nonlinear' && (
+                  <p className="text-[10px] text-amber-700 leading-relaxed">
+                    선형 보정 위에 국소가중회귀로 비선형·상호작용을 학습합니다 (데이터 ≥5점에서 활성).
+                  </p>
+                )}
 
                 <div className="space-y-2">
                   <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">── 전역 회귀 계수</p>
@@ -3202,7 +3213,7 @@ function ValidationTab({
   const grounded: ValidationSummary = useMemo(() => {
     const pairs = referenceCalibPairs(predictColdStart, DEFAULT_FORM)
     const litCalib = fitCalibration(pairs)
-    return validateModel(f => applyCalibration(predictColdStart(f), litCalib), DEFAULT_FORM)
+    return validateModel(f => applyCalibration(predictColdStart(f), litCalib, f), DEFAULT_FORM)
   }, [])
 
   const view = litActive ? grounded : raw
@@ -3220,6 +3231,10 @@ function ValidationTab({
           <p className="text-xs text-gray-500 leading-relaxed mt-1">
             기준값은 상용 등급·문헌의 대표 전형값입니다. 실제 lot은 ±편차가 있습니다.
             이 패널은 모델이 알려진 등급을 얼마나 재현하는지 보여줍니다.
+          </p>
+          <p className="text-[10px] text-amber-700 leading-relaxed mt-1">
+            ※ 비선형(LWR) 그라운딩은 누수 방지를 위해 LOOCV(leave-one-out)로 별도 검증됩니다
+            (16개 등급 각각을 나머지 15개로 보정 후 예측). 아래 in-sample 수치는 참고용입니다.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -3408,6 +3423,11 @@ export default function App() {
     setCalibPoints(pts => {
       const pairs = pts.map(p => ({
         segment:       p.segment,
+        features: {
+          npmi: p.npmi, gAbs: p.gAbs, anContent: p.anContent, pc: p.pc,
+          alphaMsan: p.alphaMsan, talc: p.talc, glassFiber: p.glassFiber,
+          carbonFiber: p.carbonFiber, phosphorusFr: p.phosphorusFr, nanoclay: p.nanoclay,
+        },
         predictedHdt:  p.predictedHdt,
         predictedIzod: p.predictedIzod,
         predictedVoc:  p.predictedVoc,
