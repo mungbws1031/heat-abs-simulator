@@ -27,6 +27,9 @@ import {
   type DomainResult,
   testSigma,
   type ScatterProp,
+  simulateRepeats,
+  type RepeatSimulation,
+  ul94Rating,
 } from '@/lib/physics'
 import {
   runGridSearch,
@@ -106,6 +109,7 @@ const DEFAULT_FORM: Formulation = {
   // 가공·이방성·형태학·시험 조건 — 기본값에서 중립
   compoundingShear: 'med', weldLinePresent: false,
   rubberBimodal: 0, graftRatio: 40, annealed: false, notchType: 'notched',
+  ul94Thickness: 3.0,
   antioxidant: 0.5, lubricant: 1.0,
   injTemp: 250, moldTemp: 70,
   // 매트릭스 개질
@@ -279,6 +283,93 @@ function PredictionExplain({ form }: { form: Formulation }) {
           <ExplainBlock ex={ex.hdt} />
           <ExplainBlock ex={ex.izod} />
           <ExplainBlock ex={ex.tensile} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ──────────────────────────────────────────────
+// 컴포넌트: 반복 실험 시뮬레이션 (n수 배치 산포)
+// ──────────────────────────────────────────────
+const REPEAT_PROP_META: Array<{ key: 'hdt' | 'izod' | 'tensile' | 'mfi'; label: string; unit: string }> = [
+  { key: 'hdt', label: 'HDT', unit: '℃' },
+  { key: 'izod', label: 'Izod', unit: 'kJ/m²' },
+  { key: 'tensile', label: '인장강도', unit: 'MPa' },
+  { key: 'mfi', label: 'MFI', unit: 'g/10min' },
+]
+
+function RepeatStrip({ samples, mean, unit }: { samples: number[]; mean: number; unit: string }) {
+  const W = 300, H = 36, PAD = 10
+  const min = Math.min(...samples, mean)
+  const max = Math.max(...samples, mean)
+  const span = Math.max(max - min, 1e-6)
+  const x = (v: number) => PAD + ((v - min) / span) * (W - PAD * 2)
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: H }}>
+      <line x1={PAD} y1={H / 2} x2={W - PAD} y2={H / 2} stroke="#e2e8f0" strokeWidth={1} />
+      {samples.map((v, i) => (
+        <circle key={i} cx={x(v)} cy={H / 2} r={3.5} fill="#60a5fa" fillOpacity={0.6} stroke="#3b82f6" strokeWidth={0.5}>
+          <title>{v.toFixed(2)} {unit}</title>
+        </circle>
+      ))}
+      {/* 평균 마커 */}
+      <line x1={x(mean)} y1={4} x2={x(mean)} y2={H - 4} stroke="#ef4444" strokeWidth={1.5} />
+      <text x={x(mean)} y={H - 1} textAnchor="middle" fontSize={7} fill="#ef4444">평균</text>
+    </svg>
+  )
+}
+
+function RepeatSimulationBlock({ pred }: { pred: PredictionResult }) {
+  const [open, setOpen] = useState(false)
+  const [n, setN] = useState<3 | 5 | 10>(5)
+  const [seed, setSeed] = useState(1)
+  const sim: RepeatSimulation = useMemo(() => simulateRepeats(pred, n, seed), [pred, n, seed])
+
+  return (
+    <div className="mt-3 pt-2 border-t">
+      <button
+        className="text-xs font-semibold text-gray-500 hover:text-blue-600 transition-colors flex items-center gap-1"
+        onClick={() => setOpen(o => !o)}>
+        <span>{open ? '▾' : '▸'}</span> 🔁 반복 실험 시뮬레이션
+      </button>
+      {open && (
+        <div className="mt-2 p-2 rounded bg-gray-50 border">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex gap-1 items-center">
+              <span className="text-[10px] text-gray-400 mr-1">n수</span>
+              {[3, 5, 10].map(v => (
+                <button key={v}
+                  className={`px-2 py-0.5 text-[10px] rounded border transition-colors ${n === v ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400'}`}
+                  onClick={() => setN(v as 3 | 5 | 10)}>
+                  {v}
+                </button>
+              ))}
+            </div>
+            <button
+              className="text-[10px] px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:bg-gray-100"
+              onClick={() => setSeed(s => s + 1)}>
+              🎲 다시 뽑기
+            </button>
+          </div>
+          {REPEAT_PROP_META.map(({ key, label, unit }) => {
+            const stat = sim.stats[key]
+            const samples = sim.samples.map(s => s[key])
+            return (
+              <div key={key} className="mb-2 last:mb-0">
+                <div className="flex items-baseline justify-between mb-0.5">
+                  <span className="text-[11px] font-semibold text-gray-600">{label}</span>
+                  <span className="text-[10px] font-mono text-gray-500 tabular-nums">
+                    {stat.mean.toFixed(2)} ± {stat.sd.toFixed(2)} {unit} (CV {stat.cv.toFixed(1)}%)
+                  </span>
+                </div>
+                <RepeatStrip samples={samples} mean={stat.mean} unit={unit} />
+              </div>
+            )
+          })}
+          <p className="text-[10px] text-gray-400 mt-1">
+            가상 반복실험 — 시험 재현성(1σ) 기반 시뮬레이션이며 실제 배치 산포와 다를 수 있습니다.
+          </p>
         </div>
       )}
     </div>
@@ -1104,6 +1195,20 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
               ))}
             </div>
           </div>
+          {/* UL94 시편 두께 */}
+          <div className="grid grid-cols-[160px_1fr] items-center gap-3 py-1.5 px-2">
+            <Label className="text-sm">UL94 시편 두께</Label>
+            <div className="flex gap-1 items-center">
+              {[0.8, 1.5, 3.0].map(t => (
+                <button key={t}
+                  className={`px-3 py-1 text-xs rounded border transition-colors ${(form.ul94Thickness ?? 3.0) === t ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-400'}`}
+                  onClick={() => setForm(f => ({ ...f, ul94Thickness: t }))}>
+                  {t.toFixed(1)}mm
+                </button>
+              ))}
+              <span className="text-[10px] text-gray-400 ml-1">얇을수록 V-0 난이도↑</span>
+            </div>
+          </div>
 
           {!compositionOk && (
             <p className="text-xs text-red-600 pt-2 px-2">⚠ 조성 합계 초과. N-PMI·g-ABS 또는 추가 재료 함량을 낮추세요.</p>
@@ -1121,7 +1226,7 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
                 <button
                   className="text-xs px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:bg-gray-50"
                   onClick={() => {
-                    const headers = 'LOT,N-PMI,g-ABS,AN함량,PC,αMSAN,나노클레이,EMA,UHMW-SR,MBS,SEBS,아크릴IM,인계FR,PTFE,탈크,GF,CF,실란,산화방지제,활제,왁스,사출온도,금형온도,SAN추정,HDT_1.8,HDT_0.45,Vicat,Izod,Izod_-30C,인장강도,굴곡탄성률_GPa,파단신율_%,비중,성형수축률_%,MFI_220_10,MI_200_21.6,MI_250_2.16,MI_250_5,TVOC,원가,UL94,세그먼트'
+                    const headers = 'LOT,N-PMI,g-ABS,AN함량,PC,αMSAN,나노클레이,EMA,UHMW-SR,MBS,SEBS,아크릴IM,인계FR,PTFE,탈크,GF,CF,실란,산화방지제,활제,왁스,사출온도,금형온도,SAN추정,HDT_1.8,HDT_0.45,Vicat,Izod,Izod_-30C,인장강도,굴곡탄성률_GPa,파단신율_%,비중,성형수축률_%,수축률_직각_%,휨위험,MFI_220_10,MI_200_21.6,MI_250_2.16,MI_250_5,TVOC,FOG,Odor,원가,UL94,세그먼트'
                     const row = [
                       lotName || '(미지정)',
                       form.npmi, form.gAbs, form.anContent, form.pc, form.alphaMsan, form.nanoclay,
@@ -1133,8 +1238,10 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
                       pred.izod.value.toFixed(1), pred.izodCold.value.toFixed(1),
                       pred.tensile.value.toFixed(1), pred.flexMod.value.toFixed(2), pred.elongation.value.toFixed(1),
                       pred.density.value.toFixed(3), pred.shrinkage.value.toFixed(2),
+                      pred.shrinkageCross.value.toFixed(2), pred.warpageRisk,
                       pred.mfi.value.toFixed(1), pred.mi200.value.toFixed(1), pred.mi250_2.value.toFixed(1), pred.mi250_5.value.toFixed(1),
-                      pred.voc.value.toFixed(0), pred.cost.value.toFixed(0), pred.ul94, pred.segment,
+                      pred.voc.value.toFixed(0), pred.fog.value.toFixed(0), pred.odor.value.toFixed(1),
+                      pred.cost.value.toFixed(0), pred.ul94, pred.segment,
                     ].join(',')
                     const csv = headers + '\n' + row
                     const a = document.createElement('a')
@@ -1234,6 +1341,22 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
             <MetricGauge label="비중 (계산)" {...pred.density} unit="g/cm³" min={1.0} max={1.5} higherIsBetter={false} />
             {/* 성형수축률 */}
             <MetricGauge label={SPEC.shrinkage.label} {...pred.shrinkage} unit={SPEC.shrinkage.unit} min={SPEC.shrinkage.min} max={SPEC.shrinkage.max} higherIsBetter={false} />
+            {/* 수축 이방성 + 휨(warpage) 위험 */}
+            <div className="flex items-center justify-between -mt-1 mb-2 px-0.5">
+              <span className="text-[11px] text-gray-400">
+                수축 이방성 <span className="text-[10px] font-mono text-gray-400">유동 {pred.shrinkage.value.toFixed(2)}% / 직각 {pred.shrinkageCross.value.toFixed(2)}%</span>
+              </span>
+              <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded"
+                style={{
+                  color: pred.warpageRisk === 'low' ? '#16a34a' : pred.warpageRisk === 'medium' ? '#d97706' : '#dc2626',
+                  background: pred.warpageRisk === 'low' ? '#f0fdf4' : pred.warpageRisk === 'medium' ? '#fffbeb' : '#fef2f2',
+                }}>
+                {pred.warpageRisk === 'low' ? '🟢낮음' : pred.warpageRisk === 'medium' ? '🟡보통' : '🔴높음'}
+              </span>
+            </div>
+            <p className="text-[10px] text-gray-400 -mt-1 mb-2 px-0.5">
+              GF/CF 배합·웰드라인 존재 시 휨 위험 증가 (정성 지표, 실제 휨량은 형상에 좌우)
+            </p>
             {/* MI 4조건 탭 */}
             <div className="mt-2 pt-2 border-t">
               <p className="text-xs font-semibold text-gray-400 mb-1">용융지수 (MI)</p>
@@ -1257,16 +1380,49 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
               {miTab === 'mi250_5' && <MetricGauge label="MI (250℃/5kg)"    {...pred.mi250_5} unit="g/10min" min={0} max={40} higherIsBetter={false} />}
             </div>
             <MetricGauge label={SPEC.voc.label}  {...pred.voc}  unit={SPEC.voc.unit}  min={SPEC.voc.min}  max={SPEC.voc.max}  target={SPEC.voc.target}  higherIsBetter={false} />
+            {/* FOG (VDA278) */}
+            <MetricGauge label="FOG (VDA278)" {...pred.fog} unit="µg/g" min={0} max={350} target={150} higherIsBetter={false} />
+            {/* Odor 등급 (VDA270) */}
+            <div className="flex items-center justify-between -mt-1 mb-1 px-0.5">
+              <span className="text-[11px] text-gray-400">Odor (VDA270)</span>
+              <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded font-mono"
+                style={{
+                  color: pred.odorPass === true ? '#16a34a' : pred.odorPass === null ? '#d97706' : '#dc2626',
+                  background: pred.odorPass === true ? '#f0fdf4' : pred.odorPass === null ? '#fffbeb' : '#fef2f2',
+                }}>
+                {pred.odor.value.toFixed(1)} / 6
+              </span>
+            </div>
+            <p className="text-[10px] text-gray-400 mb-2 px-0.5">
+              1=무취 ~ 6=매우역함, 자동차 내장 통상 기준 ≤3.0
+            </p>
             <MetricGauge label={SPEC.cost.label} {...pred.cost} unit={SPEC.cost.unit} min={SPEC.cost.min} max={SPEC.cost.max} higherIsBetter={false} />
 
             {/* 근거 분해 */}
             <PredictionExplain form={{ ...form, san: sanEst }} />
 
+            {/* 반복 실험 시뮬레이션 */}
+            <RepeatSimulationBlock pred={pred} />
+
             {/* UL-94 */}
             <div className="flex items-center justify-between mt-1 pt-2 border-t">
-              <span className="text-xs text-gray-500">UL-94 등급</span>
+              <span className="text-xs text-gray-500">UL-94 등급 @ {(form.ul94Thickness ?? 3.0).toFixed(1)}mm</span>
               <UL94Badge rating={pred.ul94} />
             </div>
+            {(() => {
+              const curThk = form.ul94Thickness ?? 3.0
+              if (curThk <= 0.8) return null
+              const thinRating = ul94Rating(form.phosphorusFr, form.ptfe, form.pc, 0.8)
+              const rank = { 'V-0': 3, 'V-2': 2, 'HB': 1, 'N/A': 0 }
+              if (rank[thinRating] < rank[pred.ul94]) {
+                return (
+                  <p className="text-[10px] text-amber-600 mt-1">
+                    ⚠ 0.8mm 기준이면 {thinRating}로 하락 가능
+                  </p>
+                )
+              }
+              return null
+            })()}
 
             {/* 골든존 배지 */}
             {pred.specPass.hdt !== false && pred.specPass.izod !== false && pred.izod.value >= 10 && pred.hdt.value >= 100 && (
@@ -3209,6 +3365,7 @@ const VAL_PROPS: Array<{ key: string; label: string; unit: string }> = [
   { key: 'elongation', label: '파단신율',   unit: '%' },
   { key: 'izodCold',   label: 'Izod-30℃',  unit: 'kJ/m²' },
   { key: 'shrinkage',  label: '성형수축률', unit: '%' },
+  { key: 'fog',        label: 'FOG',        unit: 'µg/g' },
 ]
 
 function mapeColor(p: number): string {

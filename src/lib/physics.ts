@@ -33,6 +33,7 @@ export interface Formulation {
   graftRatio?:    number  // 그래프트율 % (기준 40)
   annealed?:      boolean // 어닐링(응력완화) (기준 false)
   notchType?:     'notched' | 'unnotched' // 노치/무노치 (기준 'notched')
+  ul94Thickness?: number  // UL94 시편 두께 mm (기준 3.0 — 기존 임계값의 레퍼런스 두께)
   // ── 기본 첨가제
   antioxidant:  number   // 산화방지제 phr
   lubricant:    number   // 활제 (EBS) phr
@@ -82,7 +83,12 @@ export interface PredictionResult {
   elongation: { value: number; low: number; high: number } // NEW: 파단신율 %
   izodCold:   { value: number; low: number; high: number } // NEW: -30℃ 노치 Izod kJ/m²
   shrinkage:  { value: number; low: number; high: number } // NEW: 성형수축률 %
+  shrinkageCross: { value: number; low: number; high: number } // NEW: 직각(수직)방향 성형수축률 %
+  warpageRisk: 'low' | 'medium' | 'high'  // NEW: 휨 위험 정성 지표 (수축 이방성 기반)
   voc:     { value: number; low: number; high: number }
+  fog:     { value: number; low: number; high: number }   // NEW: FOG (VDA278) µg/g
+  odor:    { value: number; low: number; high: number }    // NEW: Odor grade (VDA270) 1.0–6.0
+  odorPass: boolean | null                                  // NEW: true ≤3.0 / null ≤3.5 / false >3.5
   cost:    { value: number; low: number; high: number }
   ul94:    'V-0' | 'V-2' | 'HB' | 'N/A'
   segment: 'ABS' | 'ABS+PC' | 'PC+ABS' | 'αMSAN-ABS'   // NEW
@@ -257,11 +263,54 @@ function vocEstimate(
     + nanoclayEffect + waxEffect + asEffect + hsEffect)
 }
 
-// UL-94 — 인계 FR + PTFE anti-drip 보조
-function ul94Rating(pFr: number, ptfe: number, pc: number): 'V-0' | 'V-2' | 'HB' | 'N/A' {
+// FOG 추정 (µg/g, VDA278) — 고분자량 응축성분(왁스·활제·산화방지제 유래)이 주 원인.
+// TVOC 대비 사출온도 의존성은 약하고, 왁스·활제(phr) 함량 의존성이 강함(응축성분=왁스/활제 그 자체).
+function fogEstimate(
+  injTemp: number, rubber: number, lubricant: number, wax: number,
+  ao: number, heatStabilizer: number
+): number {
+  // 활제(EBS)·왁스: FOG의 직접 원천(고분자량 왁스·에스테르계) — TVOC보다 큰 계수
+  const lubEffect  = lubricant * 18
+  const waxEffect  = wax * 22
+  // 고무(g-ABS) 가공조제 잔류물 기여 (TVOC보다 완만)
+  const rubberEffect = rubber * 0.8
+  // 사출온도: TVOC보다 약한 의존성(저휘발 응축성분은 온도보다 배합에 좌우)
+  const tempEffect = 6 * (Math.exp((injTemp - 250) / 40) - 1)
+  // AO/열안정제: 분해·응축 억제 → 완만한 저감
+  const aoEffect = -ao * 4
+  const hsEffect = -heatStabilizer * 3
+  // base 150: VDA278 FOG 미처리 ABS 대표 전형값
+  return Math.max(40, 150 + lubEffect + waxEffect + rubberEffect + tempEffect + aoEffect + hsEffect)
+}
+
+// Odor 등급 추정 (VDA270, 1.0~6.0, 낮을수록 무취) — VOC/FOG 부하 + 고무(오존화/산화 전구체)
+// + 첨가제(AO는 산화 전구체 억제 → 저감) 경험적 상관.
+function odorEstimate(vocVal: number, fogVal: number, rubber: number, ao: number): number {
+  const base = 2.0
+    + (vocVal - 30) / 60
+    + (fogVal - 150) / 300
+    + rubber * 0.01
+    - ao * 0.3
+  return Math.max(1.0, Math.min(6.0, base))
+}
+
+// UL-94 — 인계 FR + PTFE anti-drip 보조 + 시편 두께 의존성
+// 두께 페널티: 임계 FR 함량은 기준 두께(3.0mm) 대비 (refT/thickness)^0.4 로 스케일.
+// 얇을수록 화염 노출 시간 대비 열용량이 작아 char layer 형성이 불리 → 더 많은 FR 필요.
+export const UL94_REF_THICKNESS = 3.0
+function thicknessFactor(thickness: number): number {
+  const t = Math.max(0.4, thickness)
+  const raw = Math.pow(UL94_REF_THICKNESS / t, 0.4)
+  // 클램프: 0.8mm 요구량이 과도(≤~1.7×, 최대 35wt% 근방)하지 않도록, 3.0mm+에서는 1.0 미만으로 내려가지 않도록(floor)
+  return Math.max(1.0, Math.min(1.7, raw))
+}
+export function ul94Rating(pFr: number, ptfe: number, pc: number, thickness = UL94_REF_THICKNESS): 'V-0' | 'V-2' | 'HB' | 'N/A' {
   // PC 함유 시 난연 임계 하향(char 형성), 순수 ABS는 상향. PTFE anti-drip 보조.
-  const v0Threshold = pc >= 40 ? 10 : pc >= 20 ? 14 : (ptfe >= 0.2 ? 18 : 22)
-  const v2Threshold = pc >= 20 ? 8 : 12
+  const v0Base = pc >= 40 ? 10 : pc >= 20 ? 14 : (ptfe >= 0.2 ? 18 : 22)
+  const v2Base = pc >= 20 ? 8 : 12
+  const tf = thicknessFactor(thickness)
+  const v0Threshold = Math.min(35, v0Base * tf)
+  const v2Threshold = Math.min(30, v2Base * tf)
   if (pFr >= v0Threshold) return 'V-0'
   if (pFr >= v2Threshold) return 'V-2'
   if (pFr > 0) return 'HB'
@@ -543,6 +592,28 @@ export function moldShrinkage(f: Formulation): number {
   return Math.max(0.05, Math.min(1.2, v))
 }
 
+// 직각(수직)방향 성형수축률 (%) — 섬유(GF/CF)가 유동방향으로 배향되면
+// 유동방향 수축은 억제되고 직각방향은 상대적으로 더 수축 (섬유 배향 이방성).
+// 무충전(fiberFrac=0)에서는 shrinkageCross ≈ shrinkageFlow (등방성 근접).
+export function moldShrinkageCross(shrinkageFlow: number, f: Formulation): number {
+  const fiberFrac = (f.glassFiber + f.carbonFiber) / 100
+  const v = shrinkageFlow * (1 + fiberFrac * 1.8)
+  return Math.max(shrinkageFlow, Math.min(1.5, v))
+}
+
+// 휨(warpage) 위험 정성 지표 — 수축 이방성(유동 vs 직각방향 차이)에 기반한 3단계 등급.
+// GF/CF 배합 또는 웰드라인 존재 시 리스크 한 단계 상향 (형상 요인은 미반영, 조성 기반 프록시).
+export function warpageRiskLevel(shrinkageFlow: number, shrinkageCross: number, f: Formulation): 'low' | 'medium' | 'high' {
+  const shrinkDelta = Math.abs(shrinkageCross - shrinkageFlow)
+  const fiberFrac = (f.glassFiber + f.carbonFiber) / 100
+  const weldLinePresent = f.weldLinePresent ?? false
+
+  const tiers: Array<'low' | 'medium' | 'high'> = ['low', 'medium', 'high']
+  let idx = shrinkDelta < 0.15 ? 0 : shrinkDelta < 0.4 ? 1 : 2
+  if (weldLinePresent || fiberFrac > 0.25) idx = Math.min(2, idx + 1)
+  return tiers[idx]
+}
+
 // 세그먼트 분류 (v13 로직 준용)
 export function classifySegment(f: Formulation): 'ABS' | 'ABS+PC' | 'PC+ABS' | 'αMSAN-ABS' {
   const pcRatio = f.pc / Math.max(1, f.npmi + f.gAbs + f.pc + f.alphaMsan)
@@ -560,7 +631,7 @@ export function classifySegment(f: Formulation): 'ABS' | 'ABS+PC' | 'PC+ABS' | '
 // 95% 실험 예상 범위 = value ± 1.96σ. (기존 고정 ±% 밴드를 대체)
 export type ScatterProp =
   | 'hdt' | 'vicat' | 'izod' | 'tensile' | 'mfi' | 'density' | 'voc'
-  | 'flexMod' | 'elongation' | 'izodCold' | 'shrinkage'
+  | 'flexMod' | 'elongation' | 'izodCold' | 'shrinkage' | 'fog'
 
 const TEST_SCATTER: Record<ScatterProp, { rel: number; abs: number }> = {
   hdt:     { rel: 0.025, abs: 1.5 },   // ℃ : ~±2-3℃ 95%
@@ -574,6 +645,7 @@ const TEST_SCATTER: Record<ScatterProp, { rel: number; abs: number }> = {
   elongation: { rel: 0.18, abs: 1.0 },   // 신율은 산포 큼
   izodCold:   { rel: 0.15, abs: 0.8 },   // 저온 충격도 산포 큼
   shrinkage:  { rel: 0.08, abs: 0.03 },  // %
+  fog:        { rel: 0.15, abs: 8 },     // µg/g
 }
 
 // 물성별 1σ (실험 재현성). 알려지지 않은 파생물성은 같은 계열의 σ를 재사용한다.
@@ -586,6 +658,80 @@ export function testSigma(prop: ScatterProp, value: number): number {
 function scatterBand(prop: ScatterProp, value: number, widen = 1): { value: number; low: number; high: number } {
   const half = 1.96 * testSigma(prop, value) * widen
   return { value, low: value - half, high: value + half }
+}
+
+// ──────────────────────────────────────────────
+// 반복 실험 시뮬레이션 (n수 배치 산포)
+// ──────────────────────────────────────────────
+// mulberry32 시드 PRNG — 재현 가능한 결정론적 난수열 (Math.random 대체)
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0
+  return () => {
+    a |= 0; a = (a + 0x6D2B79F5) | 0
+    let t = Math.imul(a ^ (a >>> 15), 1 | a)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+// Box-Muller 표준정규분포 생성 (seeded)
+function makeGaussian(rng: () => number): () => number {
+  let spare: number | null = null
+  return () => {
+    if (spare != null) { const v = spare; spare = null; return v }
+    let u = 0, v = 0
+    while (u === 0) u = rng()
+    while (v === 0) v = rng()
+    const mag = Math.sqrt(-2.0 * Math.log(u))
+    const z0 = mag * Math.cos(2.0 * Math.PI * v)
+    const z1 = mag * Math.sin(2.0 * Math.PI * v)
+    spare = z1
+    return z0
+  }
+}
+
+export interface RepeatSimulation {
+  n: number
+  samples: { hdt: number; izod: number; tensile: number; mfi: number }[]
+  stats: Record<'hdt' | 'izod' | 'tensile' | 'mfi', { mean: number; sd: number; min: number; max: number; cv: number }>
+}
+
+const REPEAT_PROPS: Array<'hdt' | 'izod' | 'tensile' | 'mfi'> = ['hdt', 'izod', 'tensile', 'mfi']
+const FLOORED_PROPS = new Set<'hdt' | 'izod' | 'tensile' | 'mfi'>(['izod', 'tensile', 'mfi'])
+
+export function simulateRepeats(pred: PredictionResult, n: number, seed: number): RepeatSimulation {
+  const rng = mulberry32(seed)
+  const gauss = makeGaussian(rng)
+  const samples: RepeatSimulation['samples'] = []
+
+  for (let i = 0; i < n; i++) {
+    const sample: { hdt: number; izod: number; tensile: number; mfi: number } = { hdt: 0, izod: 0, tensile: 0, mfi: 0 }
+    for (const prop of REPEAT_PROPS) {
+      const mean = pred[prop].value
+      const sd = testSigma(prop, mean)
+      let v = mean + gauss() * sd
+      if (FLOORED_PROPS.has(prop)) v = Math.max(0, v)
+      sample[prop] = v
+    }
+    samples.push(sample)
+  }
+
+  const stats = {} as RepeatSimulation['stats']
+  for (const prop of REPEAT_PROPS) {
+    const vals = samples.map(s => s[prop])
+    const mean = vals.reduce((a, b) => a + b, 0) / vals.length
+    const variance = vals.reduce((a, b) => a + (b - mean) ** 2, 0) / Math.max(1, vals.length - 1)
+    const sd = Math.sqrt(variance)
+    stats[prop] = {
+      mean,
+      sd,
+      min: Math.min(...vals),
+      max: Math.max(...vals),
+      cv: mean !== 0 ? (sd / mean) * 100 : 0,
+    }
+  }
+
+  return { n, samples, stats }
 }
 
 // ──────────────────────────────────────────────
@@ -793,8 +939,12 @@ export function predictColdStart(f: Formulation): PredictionResult {
   let vocVal = vocEstimate(f.injTemp, f.gAbs, f.antioxidant, f.phosphorusFr, f.nanoclay, f.wax, f.antistatic, f.heatStabilizer)
   // 미건조/고습 → 잔류수분 휘발분 추가
   vocVal += moistureExcess * 20
+  let fogVal = fogEstimate(f.injTemp, f.gAbs, f.lubricant, f.wax, f.antioxidant, f.heatStabilizer)
+  fogVal += moistureExcess * 10
+  const odorVal = odorEstimate(vocVal, fogVal, f.gAbs, f.antioxidant)
+  const odorPass: boolean | null = odorVal <= 3.0 ? true : odorVal <= 3.5 ? null : false
   const costVal = costEstimate(f)
-  const ul94 = ul94Rating(f.phosphorusFr, f.ptfe, f.pc)
+  const ul94 = ul94Rating(f.phosphorusFr, f.ptfe, f.pc, f.ul94Thickness ?? UL94_REF_THICKNESS)
 
   const err = (v: number, pct: number) => ({ value: v, low: v * (1 - pct), high: v * (1 + pct) })
 
@@ -819,6 +969,11 @@ export function predictColdStart(f: Formulation): PredictionResult {
   // HDT @ 0.45 MPa: 저하중 조건 — 경험식 hdt045 ≈ hdt_1.8 + 15℃ (GF/탈크 고함량은 차이 축소)
   const hdt045Val = hdtVal + 15 - f.glassFiber * 0.22 - f.talc * 0.15 - f.carbonFiber * 0.25
 
+  // 성형수축 이방성 → 휨 위험 (섬유 배향 프록시)
+  const shrinkageFlowVal = moldShrinkage(f)
+  const shrinkageCrossVal = moldShrinkageCross(shrinkageFlowVal, f)
+  const warpageRisk = warpageRiskLevel(shrinkageFlowVal, shrinkageCrossVal, f)
+
   void err  // (cost 외 모든 물성은 실험 재현성 기반 scatterBand 사용)
 
   return {
@@ -838,8 +993,13 @@ export function predictColdStart(f: Formulation): PredictionResult {
     flexMod:    scatterBand('flexMod', flexModulus(f, fiberEff)),
     elongation: scatterBand('elongation', elongationAtBreak(f) * moistureKnockdown * weldKnock),
     izodCold:   scatterBand('izodCold', izodColdVal),
-    shrinkage:  scatterBand('shrinkage', moldShrinkage(f)),
+    shrinkage:  scatterBand('shrinkage', shrinkageFlowVal),
+    shrinkageCross: scatterBand('shrinkage', shrinkageCrossVal),
+    warpageRisk,
     voc:     scatterBand('voc', vocVal),
+    fog:     scatterBand('fog', fogVal),
+    odor:    { value: odorVal, low: Math.max(1, odorVal - 0.3), high: Math.min(6, odorVal + 0.3) },
+    odorPass,
     cost:    err(costVal,   0.10),
     ul94,
     segment,
