@@ -23,7 +23,7 @@
 178C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\vite@8.1.0_@types+node@24.13.2\node_modules\rolldown\dist\get-log-filter.mjs134254983080458295 0
 171C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\node_modules\@parcel\transformer-postcss\node_modules\.bin\semver.CMD134270832523980843 0
 232C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@floating-ui+react-dom@2.1._742a720a5438b09002865e43c266a603\node_modules\react-dom\cjs\react-dom-server-legacy.node.production.js134254983070747968 0
-87C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\dist134272977112972697 1
+87C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\dist134275262680347573 1
 132C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\zod\src\v3\tests\validations.test.ts134254983083152766 0
 147C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\react-day-picker\dist\cjs\components\DayButton.d.ts134254983264223988 0
 217C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@radix-ui+react-menubar@1.1_ceda17e4e1789bd990c96059f62c5931\node_modules\@radix-ui\react-direction\dist\index.d.ts134254983229996809 0
@@ -176,7 +176,7 @@
 120C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\zod\src\v4\locales\it.ts134254983082376569 0
 201C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\embla-carousel-react@8.6.0_react@19.2.7\node_modules\embla-carousel\esm\components\ScrollSnaps.d.ts134254983266019215 0
 95C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\src\main.tsx134271777312440920 0
-95C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules134272977071381515 1
+95C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules134275262642308335 1
 168C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\node_modules\react-refresh\cjs\react-refresh-runtime.production.js134254984824322356 0
 136C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\tailwindcss\lib\lib\cacheInvalidation.js134254983157895847 0
 143C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\lucide-react\dist\esm\icons\clipboard-minus.mjs134270829418665383 0
@@ -246,7 +246,7 @@
 198C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\lucide-react@1.21.0_react@19.2.7\node_modules\lucide-react\dist\esm\icons\sliders-horizontal.mjs134270829422886603 0
 175C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\rolldown@1.1.3\node_modules\rolldown\dist\shared\load-config-BvPPEM7l.mjs134270829353183420 0
 140C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\fp\differenceInMonthsWithOptions.js134254983272809465 0
-97C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\pnpm-lock.yaml134272977071067173 0
+97C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\pnpm-lock.yaml134275262642076033 0
 144C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\_lib\getTimezoneOffsetInMilliseconds.js134254983274272809 0
 129C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\fp\differenceInDays.d.ts134254983269410384 0
 132C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\roundToNearestMinutes.d.cts134254983271117439 0
@@ -314,7 +314,7 @@
 119C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\zod\v4\mini\index.d.cts134254983080977155 0
 197C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\postcss-load-config@4.0.2_postcss@8.5.15\node_modules\yaml\browser\dist\compose\compose-node.js134254983166336345 0
 210C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\react-day-picker@10.0.1_@types+react@19.2.17_react@19.2.7\node_modules\date-fns\locale\hy\_lib\localize.d.ts134254983270685528 0
-86C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\src134272974022614487 1
+86C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\src134275260967993154 1
 141C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\lucide-react\dist\esm\icons\star-half.mjs.map134254983194670722 0
 145C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\lucide-react\dist\esm\icons\badge-dollar-sign.mjs134270829417344076 0
 165C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\node_modules\@parcel\source-map\parcel_sourcemap_wasm\dist-node134270832516628334 1
@@ -462,7 +462,7 @@
 179C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\date-fns@4.4.0\node_modules\date-fns\fp\differenceInQuartersWithOptions.d.cts134254983269467069 0
 136C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\fp\fromUnixTimeWithOptions.d.ts134254983269929831 0
 145C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\parse\_lib\parsers\Hour0to23Parser.d.cts134254983270176411 0
-94C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\src\App.tsx134272974022594531 0
+94C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\src\App.tsx134275260967916584 0
 203C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\react-remove-scroll-bar@2.3_2c41ec4d1fdc22ac4661061d3b2313c0\node_modules\react\react.react-server.js134254983063113101 0
 209C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@parcel+workers@2.16.4_@par_13fe3b77222e746a461a2d7a71580f87\node_modules\@parcel\core\lib\public\Config.js134254984782964135 0
 129C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\locale\gd\_lib\match.cjs134254983267695181 0
@@ -555,7 +555,7 @@
 154C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\react-day-picker\dist\esm\formatters\formatYearDropdown.js134254983262683230 0
 161C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\node_modules\@swc\helpers\_\_iterable_to_array\package.json134254984820904964 0
 123C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\zod\src\v4\locales\zh-TW.ts134254983083192766 0
-90C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\src\lib134272976135582453 1
+90C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\src\lib134275260068395924 1
 199C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@parcel+reporter-tracer@2.1_d1af78d9e4f8a4c593b391550fa00241\node_modules\nullthrows\package.json134254984806954960 0
 119C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\node_modules\pify134270829393228872 1
 218C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\react-day-picker@10.0.1_@types+react@19.2.17_react@19.2.7\node_modules\react-day-picker\dist\esm\locale\sr-Latn.d.ts134254983264792873 0
@@ -575,7 +575,7 @@
 160C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\zod@4.4.3\node_modules\zod\src\v4\mini\tests\codec.test.ts134254983081825951 0
 127C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\zod\src\v3\tests\parser.test.ts134254983082680538 0
 180C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\browserslist@4.28.4\node_modules\caniuse-lite\data\features\x-doc-messaging.js134270829390415833 0
-135C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\@radix-ui_react-label.js.map134271951315871117 0
+135C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\@radix-ui_react-label.js.map134275261430184665 0
 120C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\fp\setDate.d.ts134254983271158884 0
 155C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\resolve@1.22.12\node_modules\is-core-module\README.md134254983164136400 0
 144C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\lucide-react\dist\esm\icons\lens-concave.mjs.map134254983192143975 0
@@ -671,7 +671,7 @@
 214C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\react-day-picker@10.0.1_@types+react@19.2.17_react@19.2.7\node_modules\date-fns\locale\uz\_lib\formatDistance.js134254983273391199 0
 113C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\src\components\ui\textarea.tsx134271777312293476 0
 205C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@radix-ui+react-primitive@2_2b211ae514f45e2eda250184528d6c49\node_modules\@types\react\jsx-runtime.d.ts134254983055869991 0
-101C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\src\lib\physics.ts134272513566158518 0
+101C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\src\lib\physics.ts134275260068339922 0
 198C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\lucide-react@1.21.0_react@19.2.7\node_modules\lucide-react\dist\esm\icons\laptop-minimal.mjs.map134254983192061712 0
 140C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\@radix-ui\react-hover-card\dist\index.js.map134254983228823781 0
 226C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@parcel+transformer-js@2.16_67321373000000abeababf1d6c7ec247\node_modules\@swc\helpers\_\_await_async_generator\package.json134254984820633077 0
@@ -690,7 +690,7 @@
 193C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@parcel+diagnostic@2.16.4\node_modules\@mischnic\json-sourcemap\node_modules\.bin\json5.ps1134270832523782673 0
 141C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\zod\src\v4\mini\tests\standard-schema.test.ts134254983082970789 0
 119C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\typescript\package.json134254983089056946 0
-107C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\src\lib\referenceData.ts134272973066836037 0
+107C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\src\lib\referenceData.ts134275258903032251 0
 119C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\postcss\lib\postcss.mjs134254983071875192 0
 224C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@radix-ui+react-checkbox@1._9b0a882e0afa9e7d04e8d2bebc7045e8\node_modules\@radix-ui\react-use-controllable-state\README.md134254983231118421 0
 148C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\parse\_lib\parsers\LocalWeekYearParser.d.ts134254983270715605 0
@@ -1033,7 +1033,7 @@
 140C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\tailwindcss\lib\lib\collapseAdjacentRules.js134254983157960908 0
 113C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\src\components\ui\progress.tsx134271777312293476 0
 137C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\lucide-react\dist\esm\icons\blend.mjs.map134254983188934044 0
-115C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\react.js134271951315841152 0
+115C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\react.js134275261430151625 0
 202C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@parcel+packager-css@2.16.4_44963050aac55d591cee9f290b0e8559\node_modules\@parcel\utils\.eslintrc.js134254984790202588 0
 150C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\node_modules\utility-types\dist\utility-types.js134254984822693810 0
 156C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\zod@4.4.3\node_modules\zod\src\v3\tests\number.test.ts134254983082590116 0
@@ -1372,7 +1372,7 @@
 120C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\fp\subMonths.js134254983276621109 0
 120C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\class-variance-authority134270829434931048 1
 126C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\fp\setWithOptions.cjs134254983268573327 0
-109C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.modules.yaml134272977070980296 0
+109C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.modules.yaml134275262642015911 0
 167C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\tailwindcss@3.4.1\node_modules\postcss-load-config\src\index.d.ts134254983157695960 0
 158C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\date-fns@4.4.0\node_modules\date-fns\fp\nextSunday.d.cts134254983270886375 0
 192C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\react-hook-form@7.80.0_react@19.2.7\node_modules\react-hook-form\dist\utils\sleep.d.ts.map134254983266214370 0
@@ -1392,7 +1392,7 @@
 142C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\@hookform\resolvers\zod\src\__tests__\Form.tsx134254983265407179 0
 219C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@radix-ui+react-context-men_278d3be3eacb7cd579e1eb62b3d343fe\node_modules\@radix-ui\react-context-menu\dist\index.mjs134254983228958951 0
 175C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@parcel+transformer-postcss_3d78a955f1da40e97d14463e3ca27f7a\node_modules134270832517763677 1
-101C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm134272977071167297 1
+101C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm134275262642076033 1
 137C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\lucide-react\dist\esm\icons\anvil.mjs.map134254983188196228 0
 207C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@parcel+optimizer-svg@2.16._1c2c14296658a56498a539398eddc164\node_modules\@parcel\utils\src\objectHash.js134254984790528626 0
 136C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\tailwindcss\lib\util\normalizeScreens.js134254983158628878 0
@@ -1409,7 +1409,7 @@
 116C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\zod\v4\locales\hr.js134254983081255190 0
 119C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\postcss\lib\fromJSON.js134254983071768634 0
 155C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\yaml@2.9.0\node_modules\yaml\dist\schema\core\bool.js134254983166296348 0
-125C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm-workspace-state-v1.json134272977071381515 0
+125C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm-workspace-state-v1.json134275262642240880 0
 118C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\oxlint\dist\plugins.js134270829349460387 0
 154C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\date-fns@4.4.0\node_modules\date-fns\isSameMonth.cjs134254983266924970 0
 148C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\node_modules\@parcel\workers\src\childState.js134254984819949792 0
@@ -1449,7 +1449,7 @@
 146C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\lucide-react\dist\esm\icons\flame-kindling.mjs.map134254983191107801 0
 159C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\yaml@2.9.0\node_modules\yaml\browser\dist\schema\yaml-1.1134270829389481836 1
 174C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\sucrase@3.35.1\node_modules\sucrase\dist\esm\parser\plugins\jsx\xhtml.js134254983161540370 0
-101C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite134271951315963807 1
+101C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite134275261430237977 1
 199C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@radix-ui+react-popover@1.1_c5175ea0ceb3d47af8b326edd58085c6\node_modules\aria-hidden\dist\es2015134270829455188747 1
 143C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\react-hook-form\dist\useFormControlContext.d.ts134254983266788239 0
 116C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\zod\v4\core\api.d.ts134254983081629526 0
@@ -1465,7 +1465,7 @@
 157C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\node_modules\caniuse-lite\data\features\css-any-link.js134270829385876283 0
 111C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\cmdk\LICENSE.md134254983184630947 0
 135C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\tailwindcss\src\value-parser\index.d.ts134254983159214638 0
-106C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite-temp134272976575275577 1
+106C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite-temp134275261419283005 1
 187C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@parcel+core@2.16.4_@swc+helpers@0.5.23\node_modules\@parcel\workers\test\integration134270832516334375 1
 206C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\react-day-picker@10.0.1_@types+react@19.2.17_react@19.2.7\node_modules\date-fns\locale\gl\_lib\match.cjs134254983267695181 0
 105C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\@hookform134270829485780944 1
@@ -1893,7 +1893,7 @@
 174C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\postcss-import@15.1.0_postcss@8.5.15\node_modules\resolve\lib\homedir.js134254983160617466 0
 140C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\locale\ca\_lib\formatDistance.d.cts134254983269771383 0
 175C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@radix-ui+react-checkbox@1._9b0a882e0afa9e7d04e8d2bebc7045e8\node_modules134270829455208768 1
-136C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\@radix-ui_react-slider.js.map134271951315881893 0
+136C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\@radix-ui_react-slider.js.map134275261430184665 0
 136C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\zod\src\v4\core\tests\locales\uz.test.ts134254983083142767 0
 107C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\zod\LICENSE134254983080377328 0
 139C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\lucide-react\dist\esm\icons\sticker.mjs.map134254983194700695 0
@@ -2552,7 +2552,7 @@
 186C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\embla-carousel-react@8.6.0_react@19.2.7\node_modules\embla-carousel-react\index.d.ts134254983261101077 0
 115C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\react-dom\README.md134254983070933060 0
 155C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\date-fns@4.4.0\node_modules\date-fns\formatISO9075.js134254983273446288 0
-127C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\react_jsx-runtime.js134271951315851124 0
+127C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\react_jsx-runtime.js134275261430151625 0
 117C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\closestTo.js134254983272589372 0
 179C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\caniuse-lite@1.0.30001799\node_modules\caniuse-lite\data\features\template.js134270829389684866 0
 168C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\browserslist@4.28.4\node_modules\update-browserslist-db\index.d.ts134254983088278085 0
@@ -4042,7 +4042,7 @@
 200C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\react-day-picker@10.0.1_@types+react@19.2.17_react@19.2.7\node_modules\date-fns\startOfDecade.d.ts134254983271336488 0
 154C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\node_modules\@parcel\transformer-babel\src\config.js134254984799555703 0
 162C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\tailwindcss@3.4.1\node_modules\postcss\lib\previous-map.d.ts134254983071945225 0
-135C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\rolldown-runtime-B-1-B7_t.js134271951315871117 0
+135C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\rolldown-runtime-B-1-B7_t.js134275261430184665 0
 237C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@parcel+types@2.16.4_@parce_34f9d24263b3dfb368c352b19c018b7f\node_modules\@parcel\workers\test\integration\workerfarm\reverse-handle.js134254984820095993 0
 119C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\zod\v4\locales\uz.d.cts134254983080862002 0
 188C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@parcel+packager-js@2.16.4__1f4e253406b36ab7a00571421873a044\node_modules\@parcel\rust134270832517102133 1
@@ -4106,7 +4106,7 @@
 122C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\zod\v4\locales\zh-TW.d.cts134254983080862002 0
 115C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\zod\v4\core\api.cjs134254983080387333 0
 203C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\autoprefixer@10.5.2_postcss@8.5.15\node_modules\browserslist\node_modules\.bin\update-browserslist-db134270829393802637 0
-127C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\dist-CpW9MnwK.js.map134271951315901883 0
+127C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\dist-CpW9MnwK.js.map134275261430184665 0
 138C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\lucide-react\dist\esm\icons\bed-double.mjs134270829417539448 0
 178C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\html-inline@1.2.0\node_modules\html-inline\node_modules\.bin\html-inline.ps1134270832523980843 0
 211C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@radix-ui+react-menubar@1.1_ceda17e4e1789bd990c96059f62c5931\node_modules\react-dom\profiling.react-server.js134254983070646969 0
@@ -9284,7 +9284,7 @@
 142C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\lucide-react\dist\esm\icons\hand-coins.mjs.map134254983191628699 0
 144C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\react-hook-form\dist\utils\isMultipleSelect.d.ts134254983266617557 0
 219C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@parcel+transformer-js@2.16_67321373000000abeababf1d6c7ec247\node_modules\@parcel\utils\test\input\config\config.json134254984790738675 0
-121C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\_metadata.json134271951315953809 0
+121C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\_metadata.json134275261430237977 0
 163C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\tailwindcss@3.4.1\node_modules\tailwindcss\lib\corePlugins.js134254983158075023 0
 192C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\lucide-react@1.21.0_react@19.2.7\node_modules\lucide-react\dist\esm\icons\circle-check.mjs134270829418484339 0
 148C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\react-hook-form\dist\utils\isMultipleSelect.d.ts.map134254983266049279 0
@@ -9815,7 +9815,7 @@
 181C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\autoprefixer@10.5.2_postcss@8.5.15\node_modules\caniuse-lite\data\regions\IM.js134254983098405830 0
 201C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@parcel+transformer-babel@2_b7d3cd619edae7c0703825427c6e5da2\node_modules\browserslist\node_modules134270829393588865 1
 145C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\react-day-picker\dist\esm\helpers\getNextFocus.js134254983262894963 0
-130C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\@radix-ui_react-slot.js134271951315811119 0
+130C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\@radix-ui_react-slot.js134275261430070254 0
 147C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\lucide-react\dist\esm\icons\battery-warning.mjs.map134254983188802595 0
 193C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@parcel+reporter-tracer@2.1_d1af78d9e4f8a4c593b391550fa00241\node_modules\@parcel\utils\src134270832517763677 1
 152C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\browserslist@4.28.4\node_modules\caniuse-lite\data134270829391748381 1
@@ -10399,7 +10399,7 @@
 217C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\react-day-picker@10.0.1_@types+react@19.2.17_react@19.2.7\node_modules\react-day-picker\dist\cjs\helpers\getDays.js134254983262784954 0
 173C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\browserslist@4.28.4\node_modules\caniuse-lite\data\features\jpeg2000.js134270829387866264 0
 143C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\react-day-picker\dist\esm\labels\labelNext.d.ts134254983264589224 0
-131C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\react_jsx-dev-runtime.js134271951315841152 0
+131C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\react_jsx-dev-runtime.js134275261430151625 0
 224C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@radix-ui+react-radio-group_b6593b52a7a411ae5ab58b3bddcfb038\node_modules\react-dom\cjs\react-dom-test-utils.production.js134254983070843123 0
 150C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\node_modules\html-tokenize\test\quote\index.html134254984801842245 0
 205C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\react-day-picker@10.0.1_@types+react@19.2.17_react@19.2.7\node_modules\react-day-picker\dist\cjs\utc.js134254983263925370 0
@@ -10711,7 +10711,7 @@
 206C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\vite@8.1.0_@types+node@24.13.2_jiti@1.21.7_yaml@2.9.0\node_modules\yaml\browser\dist\compose\composer.js134254983166356387 0
 142C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\react-day-picker\dist\esm\components\Months.js134254983263410634 0
 160C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\node_modules\caniuse-lite\data\features\css-containment.js134270829386006567 0
-119C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\package.json134271951311308314 0
+119C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\package.json134275261423532600 0
 153C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\react-day-picker\dist\esm\components\NextMonthButton.d.ts134254983264682708 0
 211C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\react-day-picker@10.0.1_@types+react@19.2.17_react@19.2.7\node_modules\date-fns\fp\eachMinuteOfInterval.d.cts134254983269524052 0
 205C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\react-remove-scroll@2.7.2_@types+react@19.2.17_react@19.2.7\node_modules\use-sidecar\dist\es2019\env.js134254983236225549 0
@@ -11179,7 +11179,7 @@
 167C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\node_modules\caniuse-lite\data\features\css-print-color-adjust.js134270829386396540 0
 137C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\react-day-picker\dist\cjs\locale\en-GB.js134254983262478648 0
 194C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\react-remove-scroll-bar@2.3_2c41ec4d1fdc22ac4661061d3b2313c0\node_modules\@types\react\ts5.0134270829361635479 1
-125C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.tmp\tsconfig.app.tsbuildinfo134272976570518904 0
+125C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.tmp\tsconfig.app.tsbuildinfo134275261259539000 0
 139C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\react-day-picker\dist\cjs\locale\en-IE.d.ts134254983264264113 0
 207C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@radix-ui+react-dropdown-me_7af4ef59106aedc167d77b05d7699524\node_modules\@radix-ui\react-id\package.json134254983230326235 0
 211C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@radix-ui+react-tooltip@1.2_888699add025be5d8185ea2863550208\node_modules\@radix-ui\react-slot\dist\index.mjs134254983228085077 0
@@ -11315,7 +11315,7 @@
 181C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\use-sidecar@1.1.3_@types+react@19.2.17_react@19.2.7\node_modules\detect-node-es134270829455481289 1
 156C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\node_modules\embla-carousel\components\EventStore.d.ts134254983265684091 0
 134C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\react-day-picker\dist\cjs\locale\hy.js134254983263031560 0
-122C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\lucide-react.js134271951315831118 0
+122C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\lucide-react.js134275261430070254 0
 139C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\node_modules\html-select\node_modules134270832523782673 1
 196C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@parcel+cache@2.16.4_@parce_f1785f6f1311a012580548ee68df081c\node_modules\lmdb\src\lmdb-js.cpp134254984827215982 0
 143C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\node_modules\undici-types\dispatcher.d.ts134254983067649292 0
@@ -12461,7 +12461,7 @@
 161C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\date-fns@4.4.0\node_modules\date-fns\fp\yearsToQuarters.cjs134254983269004624 0
 146C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\lucide-react\dist\esm\icons\package-search.mjs.map134254983193127152 0
 157C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\resolve@1.22.12\node_modules\resolve\test\home_paths.js134254983160617466 0
-128C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\tailwind-merge.js.map134271951315931880 0
+128C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\tailwind-merge.js.map134275261430237977 0
 117C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\lucide-react\dist\cjs134270829427607579 1
 206C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@parcel+transformer-js@2.16_67321373000000abeababf1d6c7ec247\node_modules\@parcel\core\lib\serializer.js134254984783344275 0
 134C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\locale\te\_lib\formatLong.cjs134254983265774294 0
@@ -13349,10 +13349,10 @@
 159C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@swc+helpers@0.5.23\node_modules\@swc\helpers\_\_inherits134270832520736341 1
 135C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\node_modules\@swc\core\index.d.ts134270832505890963 0
 153C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\date-fns@4.4.0\node_modules\date-fns\locale\ro\_lib134270829484721021 1
-123C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\dist-BRocSQl2.js134271951315861122 0
+123C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\dist-BRocSQl2.js134275261430151625 0
 141C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\lucide-react\dist\esm\icons\baggage-claim.mjs134270829417422449 0
 137C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\locale\bn\_lib\formatRelative.js134254983273782755 0
-127C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\dist-BRocSQl2.js.map134271951315891838 0
+127C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\dist-BRocSQl2.js.map134275261430184665 0
 117C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\setMonth.cjs134254983268496423 0
 145C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\lucide-react\dist\esm\icons\baggage-claim.mjs.map134254983188702167 0
 135C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\lucide-react\dist\esm\icons\balloon.mjs134270829417422449 0
@@ -13707,7 +13707,7 @@
 189C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\lucide-react@1.21.0_react@19.2.7\node_modules\lucide-react\dist\esm\icons\sword.mjs.map134254983194810864 0
 138C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\lucide-react\dist\esm\icons\book-a.mjs.map134254983188982042 0
 213C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\react-day-picker@10.0.1_@types+react@19.2.17_react@19.2.7\node_modules\date-fns\fp\endOfMinuteWithOptions.d.cts134254983269670438 0
-135C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\react_jsx-dev-runtime.js.map134271951315921880 0
+135C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\react_jsx-dev-runtime.js.map134275261430237977 0
 170C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\zod@4.4.3\node_modules\zod\src\v4\classic\tests\intersection.test.ts134254983082336526 0
 196C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\react-day-picker@10.0.1_@types+react@19.2.17_react@19.2.7\node_modules\date-fns\locale\km\_lib134270829484664709 1
 139C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\lucide-react\dist\esm\icons\replace.mjs.map134254983193738892 0
@@ -14541,7 +14541,7 @@
 119C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\isThisYear.cjs134254983267026247 0
 226C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@parcel+runtime-js@2.16.4_@_c51530a72ee11a66c7358b6f38298c35\node_modules\@parcel\runtime-js\src\helpers\worker\js-loader.js134254984788909211 0
 141C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\lucide-react\dist\esm\icons\cigarette.mjs.map134254983189716187 0
-130C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\@radix-ui_react-tabs.js134271951315821138 0
+130C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\@radix-ui_react-tabs.js134275261430070254 0
 170C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\date-fns@4.4.0\node_modules\date-fns\locale\fy\_lib\formatLong.d.cts134254983269832640 0
 114C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\set.d.cts134254983271158884 0
 205C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\react-remove-scroll@2.7.2_@types+react@19.2.17_react@19.2.7\node_modules\@types\react\experimental.d.ts134254983055841591 0
@@ -15773,7 +15773,7 @@
 137C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\lucide-react\dist\esm\icons\files.mjs.map134254983191042676 0
 193C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\sonner@2.0.7_react-dom@19.2.7_react@19.2.7__react@19.2.7\node_modules\sonner\dist\index.mjs134254983260591566 0
 216C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\react-day-picker@10.0.1_@types+react@19.2.17_react@19.2.7\node_modules\date-fns\locale\sl\_lib\formatDistance.d.ts134254983269771383 0
-132C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\@radix-ui_react-select.js134271951315801128 0
+132C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\@radix-ui_react-select.js134275261430070254 0
 169C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\date-fns@4.4.0\node_modules\date-fns\fp\addSecondsWithOptions.d.cts134254983269125821 0
 214C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\sonner@2.0.7_react-dom@19.2.7_react@19.2.7__react@19.2.7\node_modules\react\cjs\react-jsx-runtime.development.js134254983063069418 0
 206C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@parcel+transformer-js@2.16_67321373000000abeababf1d6c7ec247\node_modules\@swc\helpers\cjs\_defaults.cjs134254984819492473 0
@@ -18031,7 +18031,7 @@
 187C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\postcss-load-config@4.0.2_postcss@8.5.15\node_modules\yaml\dist\doc\applyReviver.d.ts134254983167110451 0
 140C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\lucide-react\dist\esm\icons\package-open.mjs134270829421691886 0
 144C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\lucide-react\dist\esm\icons\package-open.mjs.map134254983193107139 0
-124C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\tailwind-merge.js134271951315851124 0
+124C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\tailwind-merge.js134275261430151625 0
 220C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\react-day-picker@10.0.1_@types+react@19.2.17_react@19.2.7\node_modules\react-day-picker\dist\esm\locale\be-tarask.d.ts134254983264127970 0
 139C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\lucide-react\dist\esm\icons\tablets.mjs.map134254983194867182 0
 188C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\autoprefixer@10.5.2_postcss@8.5.15\node_modules\caniuse-lite\data\features\bloburls.js134270829385511581 0
@@ -18635,7 +18635,7 @@
 173C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\date-fns@4.4.0\node_modules\date-fns\locale\nl\_lib\formatRelative.d.ts134254983269864805 0
 140C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\lucide-react\dist\esm\icons\receipt-euro.mjs134270829422249278 0
 201C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\embla-carousel-react@8.6.0_react@19.2.7\node_modules\embla-carousel\cjs\components\ScrollSnaps.d.ts134254983265794308 0
-126C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.tmp\tsconfig.node.tsbuildinfo134272976573232353 0
+126C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.tmp\tsconfig.node.tsbuildinfo134275261262622174 0
 135C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\node_modules\jiti\dist\utils.d.ts134254983159871487 0
 133C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\locale\it\_lib\localize.d.ts134254983270685528 0
 218C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@parcel+reporter-tracer@2.1_d1af78d9e4f8a4c593b391550fa00241\node_modules\@parcel\utils\test\input\config\config.cjs134254984790187536 0
@@ -18765,7 +18765,7 @@
 201C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@parcel+packager-html@2.16._6ca78d791f76089cfcb11ee531276376\node_modules\@parcel\rust\lib\utils.js134254984814155307 0
 146C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\node_modules\caniuse-lite\data\regions\FI.js134254983098109289 0
 133C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\lucide-react\dist\esm\icons\reply.mjs134270829422358867 0
-126C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\lucide-react.js.map134271951315911876 0
+126C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\lucide-react.js.map134275261430184665 0
 184C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@parcel+core@2.16.4_@swc+helpers@0.5.23\node_modules\@parcel\utils\src\debounce.js134254984790322819 0
 137C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\lucide-react\dist\esm\icons\reply.mjs.map134254983193743913 0
 203C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\react-day-picker@10.0.1_@types+react@19.2.17_react@19.2.7\node_modules\date-fns\fp\lastDayOfYear.d.ts134254983270653580 0
@@ -21305,7 +21305,7 @@
 117C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\getMonth.cjs134254983266460467 0
 168C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\@hookform\resolvers\superstruct\src\__tests__\Form-native-validation.tsx134254983265275206 0
 138C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\getOverlappingDaysInIntervals.cjs134254983266470473 0
-114C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\clsx.js134271951315821138 0
+114C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\clsx.js134275261430070254 0
 154C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\anymatch@3.1.3\node_modules\normalize-path\README.md134254983157251759 0
 226C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@radix-ui+react-switch@1.3._f30aab934061263a32f2b7a519c5feb6\node_modules\react-dom\cjs\react-dom-server.node.development.js134254983070833061 0
 202C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\react-day-picker@10.0.1_@types+react@19.2.17_react@19.2.7\node_modules\date-fns\formatDistance.d.cts134254983269771383 0
@@ -21838,7 +21838,7 @@
 137C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\locale\gu\_lib\formatDistance.js134254983273250986 0
 123C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\fp\isWeekend.d.cts134254983270532210 0
 136C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\autoprefixer\lib\hacks\grid-row-align.js134254983153163351 0
-118C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\clsx.js.map134271951315891838 0
+118C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\clsx.js.map134275261430184665 0
 126C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\previousWednesday.cjs134254983268286125 0
 128C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\fp\lastDayOfQuarter.cjs134254983267201904 0
 129C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\fp\lastDayOfQuarter.d.ts134254983270633578 0
@@ -21855,7 +21855,7 @@
 192C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\vite@8.1.0_@types+node@24.13.2_jiti@1.21.7_yaml@2.9.0\node_modules\postcss\lib\document.js134254983071764848 0
 126C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\quartersToYears.d.cts134254983271107442 0
 171C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@parcel+source-map@2.1.1\node_modules\@parcel\source-map\node_modules134270832523465715 1
-134C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\class-variance-authority.js134271951315821138 0
+134C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\class-variance-authority.js134275261430070254 0
 172C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\caniuse-lite@1.0.30001799\node_modules\caniuse-lite\data\regions\SG.js134254983099462197 0
 162C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\node_modules\caniuse-lite\data\features\loading-lazy-attr.js134270829388128338 0
 152C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\trumpet@1.7.2\node_modules\html-select\.travis.yml134254984789720200 0
@@ -22762,6 +22762,7 @@
 114C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\locale\kn134270829479914958 1
 196C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\vite@8.1.0_@types+node@24.13.2_jiti@1.21.7_yaml@2.9.0\node_modules\yaml\dist\doc\Document.d.ts134254983167200484 0
 138C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\node_modules\resolve\test\precedence134270829389391944 1
+118C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\dist\heat-abs-simulator.67f3fa4e.js134275262680347573 0
 133C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\node_modules\scheduler\index.js134254983096813442 0
 120C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\locale\kn.d.cts134254983270582197 0
 151C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\node_modules\@parcel\watcher\src\watchman\BSER.cc134254984807865594 0
@@ -23636,7 +23637,7 @@
 173C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\ts-interface-checker@0.1.13\node_modules\ts-interface-checker\README.md134254983164066366 0
 119C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\locale\sl\_lib134270829484731093 1
 212C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\use-callback-ref@1.3.3_@types+react@19.2.17_react@19.2.7\node_modules\use-callback-ref\dist\es5\useMergeRef.js134254983233663151 0
-111C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\lock.yaml134272977071067173 0
+111C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\lock.yaml134275262642076033 0
 157C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\node_modules\sucrase\dist\esm\parser\tokenizer\state.js134254983161430357 0
 134C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\locale\de\_lib\localize.d.cts134254983270685528 0
 158C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\date-fns@4.4.0\node_modules\date-fns\fp\nextThursday.cjs134254983268097195 0
@@ -26495,7 +26496,7 @@
 169C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\rolldown@1.1.3\node_modules\rolldown\node_modules\.bin\rolldown.ps1134270829372231293 0
 131C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\fp\eachMonthOfInterval.cjs134254983264539188 0
 216C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@radix-ui+react-tooltip@1.2_888699add025be5d8185ea2863550208\node_modules\@radix-ui\react-popper\dist\index.js.map134270829453035964 0
-130C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\react-dom_client.js.map134271951315911876 0
+130C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\react-dom_client.js.map134275261430184665 0
 133C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\fp\eachMonthOfInterval.d.cts134254983269534040 0
 151C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\postcss@8.5.15\node_modules\source-map-js\LICENSE134254983085248579 0
 132C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\fp\eachMonthOfInterval.d.ts134254983269534040 0
@@ -27640,7 +27641,7 @@
 151C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\date-fns@4.4.0\node_modules\date-fns\CHANGELOG.md134254983276815740 0
 199C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\react-day-picker@10.0.1_@types+react@19.2.17_react@19.2.7\node_modules\date-fns\getISOWeekYear.js134254983274202606 0
 132C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\fp\parseJSONWithOptions.cjs134254983268188653 0
-138C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\class-variance-authority.js.map134271951315881893 0
+138C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\class-variance-authority.js.map134275261430184665 0
 225C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@radix-ui+react-id@1.1.2_@types+react@19.2.17_react@19.2.7\node_modules\@radix-ui\react-use-layout-effect\dist\index.js.map134254983232184124 0
 134C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\fp\parseJSONWithOptions.d.cts134254983270961456 0
 218C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@parcel+optimizer-image@2.1_5999c16ae486579b2f98e75311927761\node_modules\@parcel\core\lib\requests\ConfigRequest.js134254984782974137 0
@@ -27858,7 +27859,7 @@
 146C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\node_modules\caniuse-lite\data\regions\IN.js134254983098431072 0
 164C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\date-fns@4.4.0\node_modules\date-fns\locale\ug\_lib\match.d.ts134254983270725576 0
 153C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\date-fns@4.4.0\node_modules\date-fns\locale\pl\_lib134270829484704824 1
-131C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\react_jsx-runtime.js.map134271951315921880 0
+131C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\react_jsx-runtime.js.map134275261430237977 0
 197C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@parcel+fs@2.16.4_@parcel+core@2.16.4_@swc+helpers@0.5.23_\node_modules\@parcel\core\lib\public134270832517260759 1
 132C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\date-fns\fp\setISODayWithOptions.cjs134254983268441220 0
 176C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\vite@8.1.0_@types+node@24.13.2\node_modules\@types\node\child_process.d.ts134254983062155551 0
@@ -29593,41 +29594,41 @@
 197C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\react-day-picker@10.0.1_@types+react@19.2.17_react@19.2.7\node_modules\date-fns\locale\ar-MA.js134254983271809227 0
 192C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\react-day-picker@10.0.1_@types+react@19.2.17_react@19.2.7\node_modules\@date-fns\tz\tzScan134270829471959930 1
 211C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\react-day-picker@10.0.1_@types+react@19.2.17_react@19.2.7\node_modules\react-day-picker\dist\esm\locale\se.js134254983263668908 0
-106C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps134271951315953809 1
-131C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\@radix-ui_react-label.js134271951315797278 0
-136C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\@radix-ui_react-select.js.map134271951315881893 0
-132C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\@radix-ui_react-slider.js134271951315811119 0
+106C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps134275261430237977 1
+131C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\@radix-ui_react-label.js134275261430070254 0
+136C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\@radix-ui_react-select.js.map134275261430184665 0
+132C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\@radix-ui_react-slider.js134275261430070254 0
 162C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@radix-ui+react-collapsible_e92b6f0788ff52b38e85f3f44ff92ede134270829454827332 1
 194C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\react-day-picker@10.0.1_@types+react@19.2.17_react@19.2.7\node_modules\date-fns\locale\hi.js134254983274346162 0
-134C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\@radix-ui_react-tabs.js.map134271951315881893 0
-123C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\dist-8pL483zo.js134271951315851124 0
+134C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\@radix-ui_react-tabs.js.map134275261430184665 0
+123C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\dist-8pL483zo.js134275261430151625 0
 211C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@parcel+packager-html@2.16._6ca78d791f76089cfcb11ee531276376\node_modules\@parcel\utils\src\getModuleParts.js134254984790398625 0
 150C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\node_modules\trumpet\test\attribute_selectors.js134254984790017475 0
 142C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\node_modules\sucrase\dist\parser\plugins134270829390051112 1
-127C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\dist-8pL483zo.js.map134271951315891838 0
-123C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\dist-CBwZmnau.js134271951315861122 0
-127C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\dist-CBwZmnau.js.map134271951315891838 0
+127C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\dist-8pL483zo.js.map134275261430184665 0
+123C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\dist-CBwZmnau.js134275261430151625 0
+127C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\dist-CBwZmnau.js.map134275261430184665 0
 221C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@radix-ui+react-visually-hi_3d4007a391f0c21444627be7f7b3ad57\node_modules\react\cjs\react-jsx-dev-runtime.production.js134254983063049403 0
 142C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\read-cache@1.0.0\node_modules\read-cache134270829390603250 1
-123C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\dist-CpW9MnwK.js134271951315861122 0
+123C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\dist-CpW9MnwK.js134275261430184665 0
 152C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\trumpet@1.7.2\node_modules\trumpet\test\child.html134254984790212643 0
 208C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@radix-ui+react-radio-group_b6593b52a7a411ae5ab58b3bddcfb038\node_modules\@radix-ui\primitive\package.json134254983229965161 0
 218C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@parcel+config-default@2.16_b6ea8551a97b4ef70321c65e6216be6c\node_modules\@parcel\packager-js\src\CJSOutputFormat.js134254984795493847 0
 159C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@swc+counter@0.1.3\node_modules\@swc\counter\CHANGELOG.md134254984823169134 0
 209C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@radix-ui+react-menu@2.1.18_476586c402937c39bc9e1e3c22b45af1\node_modules\@radix-ui\react-primitive\LICENSE134254983228095115 0
 160C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\node_modules\@swc\helpers\_\_tagged_template_literal_loose134270832520887600 1
-123C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\dist-Ozu1nMZ1.js134271951315871117 0
-127C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\dist-Ozu1nMZ1.js.map134271951315901883 0
+123C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\dist-Ozu1nMZ1.js134275261430184665 0
+127C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\dist-Ozu1nMZ1.js.map134275261430184665 0
 165C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\node_modules\caniuse-lite\data\features\input-file-directory.js134270829387719629 0
 145C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\cssesc@3.0.0\node_modules\cssesc\bin\cssesc134254983166158842 0
-119C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\react-dom.js134271951315831118 0
+119C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\react-dom.js134275261430070254 0
 146C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\zod@4.4.3\node_modules\zod\v3\locales\en.cjs134254983080478287 0
-123C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\react-dom.js.map134271951315911876 0
+123C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\react-dom.js.map134275261430184665 0
 182C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\browserslist@4.28.4\node_modules\caniuse-lite\data\features\css-initial-value.js134270829386233908 0
 210C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\react-day-picker@10.0.1_@types+react@19.2.17_react@19.2.7\node_modules\date-fns\locale\oc\_lib\localize.d.ts134254983270685528 0
 217C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\update-browserslist-db@1.2.3_browserslist@4.28.4\node_modules\browserslist\node_modules\.bin\update-browserslist-db134270829393802637 0
-126C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\react-dom_client.js134271951315841152 0
-119C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\react.js.map134271951315921880 0
+126C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\react-dom_client.js134275261430151625 0
+119C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.vite\deps\react.js.map134275261430234773 0
 191C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@parcel+core@2.16.4_@swc+helpers@0.5.23\node_modules\@parcel\source-map\node_modules\.bin134270832523782673 1
 124C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@alloc+quick-lru@5.2.0134270829388808579 1
 120C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@date-fns+tz@1.5.0134270829471716234 1
@@ -53299,7 +53300,6 @@
 186C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\lucide-react@1.21.0_react@19.2.7\node_modules\lucide-react\dist\esm\icons\target.mjs134270829423512613 0
 184C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\lucide-react@1.21.0_react@19.2.7\node_modules\lucide-react\dist\esm\icons\tent.mjs134270829423522566 0
 205C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@radix-ui+react-switch@1.3._f30aab934061263a32f2b7a519c5feb6\node_modules\@radix-ui\react-use-size\dist134270829455121872 1
-118C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\dist\heat-abs-simulator.39bda82c.js134272977112972697 0
 199C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\lucide-react@1.21.0_react@19.2.7\node_modules\lucide-react\dist\esm\icons\terminal-square.mjs.map134254983194924280 0
 188C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\lucide-react@1.21.0_react@19.2.7\node_modules\lucide-react\dist\esm\icons\terminal.mjs134270829423532580 0
 192C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\lucide-react@1.21.0_react@19.2.7\node_modules\lucide-react\dist\esm\icons\terminal.mjs.map134254983194929315 0
@@ -64583,7 +64583,7 @@
 195C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@radix-ui+react-popover@1.1_c5175ea0ceb3d47af8b326edd58085c6\node_modules\@radix-ui\primitive134270829456077650 1
 199C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@radix-ui+react-popover@1.1_c5175ea0ceb3d47af8b326edd58085c6\node_modules\@radix-ui\react-context134270829456077650 1
 176C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@parcel+source-map@2.1.1\node_modules\@parcel\source-map\dist\node.js.flow134254984819762775 0
-98C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\dist\index.html134272977112972697 0
+98C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\dist\index.html134275262680347573 0
 209C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@radix-ui+react-popover@1.1_c5175ea0ceb3d47af8b326edd58085c6\node_modules\@radix-ui\react-dismissable-layer134270829456087719 1
 204C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@radix-ui+react-popover@1.1_c5175ea0ceb3d47af8b326edd58085c6\node_modules\@radix-ui\react-focus-guards134270829456097680 1
 194C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.pnpm\@radix-ui+react-popover@1.1_c5175ea0ceb3d47af8b326edd58085c6\node_modules\@radix-ui\react-id134270829456097680 1
@@ -72910,5 +72910,5 @@
 109C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.bin\vite.ps1134270829394028582 0
 105C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.bin\yaml134270829394058659 0
 109C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\node_modules\.bin\yaml.ps1134270829394058659 0
-119C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\dist\heat-abs-simulator.c43ec1b6.css134272977109476368 0
+119C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\dist\heat-abs-simulator.658873d2.css134275262678138296 0
 102C:\Users\redna\.claude\.claude\worktrees\nervous-gagarin-939b8f\heat-abs-simulator\.claude\launch.json134271777310479952 0

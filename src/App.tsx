@@ -85,6 +85,10 @@ const SPEC = {
   vicat:   { target: 123,  unit: '℃',       label: 'Vicat',               min: 88,   max: 150,  higherIsBetter: true  },
   izod:    { target: 15,   unit: 'kJ/m²',   label: 'Izod 충격',           min: 0,    max: 80,   higherIsBetter: true  },
   tensile: { target: 40,   unit: 'MPa',     label: '인장강도',             min: 15,   max: 80,   higherIsBetter: true  },
+  flexMod: { target: 0,    unit: 'GPa',     label: '굴곡탄성률',           min: 0.8,  max: 10,   higherIsBetter: true  },
+  elongation: { target: 0, unit: '%',       label: '파단신율',             min: 0,    max: 100,  higherIsBetter: true  },
+  izodCold: { target: 0,   unit: 'kJ/m²',   label: 'Izod (-30℃)',         min: 0,    max: 60,   higherIsBetter: true  },
+  shrinkage: { target: 0,  unit: '%',       label: '성형수축률',           min: 0,    max: 1.2,  higherIsBetter: false },
   density: { target: 0,    unit: 'g/cm³',   label: '비중 (계산)',          min: 1.00, max: 1.50, higherIsBetter: false },
   mfi:     { target: 5,    unit: 'g/10min', label: 'MFI (220℃/10kg)',     min: 0,    max: 40,   higherIsBetter: false },
   voc:     { target: 50,   unit: 'µg/g',    label: 'TVOC (VDA278)',        min: 0,    max: 100,  higherIsBetter: false },
@@ -1117,7 +1121,7 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
                 <button
                   className="text-xs px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:bg-gray-50"
                   onClick={() => {
-                    const headers = 'LOT,N-PMI,g-ABS,AN함량,PC,αMSAN,나노클레이,EMA,UHMW-SR,MBS,SEBS,아크릴IM,인계FR,PTFE,탈크,GF,CF,실란,산화방지제,활제,왁스,사출온도,금형온도,SAN추정,HDT_1.8,HDT_0.45,Vicat,Izod,인장강도,비중,MFI_220_10,MI_200_21.6,MI_250_2.16,MI_250_5,TVOC,원가,UL94,세그먼트'
+                    const headers = 'LOT,N-PMI,g-ABS,AN함량,PC,αMSAN,나노클레이,EMA,UHMW-SR,MBS,SEBS,아크릴IM,인계FR,PTFE,탈크,GF,CF,실란,산화방지제,활제,왁스,사출온도,금형온도,SAN추정,HDT_1.8,HDT_0.45,Vicat,Izod,Izod_-30C,인장강도,굴곡탄성률_GPa,파단신율_%,비중,성형수축률_%,MFI_220_10,MI_200_21.6,MI_250_2.16,MI_250_5,TVOC,원가,UL94,세그먼트'
                     const row = [
                       lotName || '(미지정)',
                       form.npmi, form.gAbs, form.anContent, form.pc, form.alphaMsan, form.nanoclay,
@@ -1126,7 +1130,9 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
                       form.silane, form.antioxidant, form.lubricant, form.wax,
                       form.injTemp, form.moldTemp, sanEst.toFixed(1),
                       pred.hdt.value.toFixed(1), pred.hdt045.value.toFixed(1), pred.vicat.value.toFixed(1),
-                      pred.izod.value.toFixed(1), pred.tensile.value.toFixed(1), pred.density.value.toFixed(3),
+                      pred.izod.value.toFixed(1), pred.izodCold.value.toFixed(1),
+                      pred.tensile.value.toFixed(1), pred.flexMod.value.toFixed(2), pred.elongation.value.toFixed(1),
+                      pred.density.value.toFixed(3), pred.shrinkage.value.toFixed(2),
                       pred.mfi.value.toFixed(1), pred.mi200.value.toFixed(1), pred.mi250_2.value.toFixed(1), pred.mi250_5.value.toFixed(1),
                       pred.voc.value.toFixed(0), pred.cost.value.toFixed(0), pred.ul94, pred.segment,
                     ].join(',')
@@ -1209,8 +1215,14 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
             {form.notchType === 'unnotched'
               ? <MetricGauge label="Izod 충격(무노치)" {...pred.izodUnnotched} unit={SPEC.izod.unit} min={0} max={120} higherIsBetter={true} />
               : <MetricGauge label="Izod 충격(노치)" {...pred.izod} unit={SPEC.izod.unit} min={SPEC.izod.min} max={SPEC.izod.max} target={SPEC.izod.target} higherIsBetter={true} />}
+            {/* 저온 충격 (-30℃, ambientTemp 슬라이더와 무관한 독립 표준시험) */}
+            <MetricGauge label={SPEC.izodCold.label} {...pred.izodCold} unit={SPEC.izodCold.unit} min={SPEC.izodCold.min} max={SPEC.izodCold.max} higherIsBetter={true} />
             {/* 인장강도 */}
             <MetricGauge label="인장강도" {...pred.tensile} unit="MPa" min={15} max={80} higherIsBetter={true} />
+            {/* 굴곡탄성률 */}
+            <MetricGauge label={SPEC.flexMod.label} {...pred.flexMod} unit={SPEC.flexMod.unit} min={SPEC.flexMod.min} max={SPEC.flexMod.max} higherIsBetter={true} />
+            {/* 파단신율 */}
+            <MetricGauge label={SPEC.elongation.label} {...pred.elongation} unit={SPEC.elongation.unit} min={SPEC.elongation.min} max={SPEC.elongation.max} higherIsBetter={true} />
             {/* 직각방향 인장 (이방성) — 섬유 충전재일 때만 */}
             {(form.glassFiber + form.carbonFiber) > 0 && (
               <div className="flex items-baseline justify-between -mt-1 mb-2 px-0.5">
@@ -1220,6 +1232,8 @@ function PredictorTab({ records, onAddRecord, loadedFormulation, onFormulationLo
             )}
             {/* 비중 */}
             <MetricGauge label="비중 (계산)" {...pred.density} unit="g/cm³" min={1.0} max={1.5} higherIsBetter={false} />
+            {/* 성형수축률 */}
+            <MetricGauge label={SPEC.shrinkage.label} {...pred.shrinkage} unit={SPEC.shrinkage.unit} min={SPEC.shrinkage.min} max={SPEC.shrinkage.max} higherIsBetter={false} />
             {/* MI 4조건 탭 */}
             <div className="mt-2 pt-2 border-t">
               <p className="text-xs font-semibold text-gray-400 mb-1">용융지수 (MI)</p>
@@ -3071,8 +3085,12 @@ function CompareTab({ onLoad }: { onLoad: (f: Formulation) => void }) {
     { label: 'HDT(0.45)', get: p => p.hdt045.value.toFixed(1) + '℃',  color: p => hdtColor(p.hdt045.value) },
     { label: 'Vicat',     get: p => p.vicat.value.toFixed(1) + '℃' },
     { label: 'Izod',      get: p => p.izod.value.toFixed(1) + ' kJ',   color: p => izodColor(p.izod.value) },
+    { label: 'Izod(-30℃)', get: p => p.izodCold.value.toFixed(1) + ' kJ' },
     { label: '인장강도',  get: p => p.tensile.value.toFixed(1) + ' MPa' },
+    { label: '굴곡탄성률', get: p => p.flexMod.value.toFixed(2) + ' GPa' },
+    { label: '파단신율',  get: p => p.elongation.value.toFixed(1) + ' %' },
     { label: '비중',      get: p => p.density.value.toFixed(3) },
+    { label: '성형수축률', get: p => p.shrinkage.value.toFixed(2) + ' %' },
     { label: 'MFI(220/10)', get: p => p.mfi.value.toFixed(1) + ' g/10min' },
     { label: 'TVOC',      get: p => p.voc.value.toFixed(0) + ' µg/g',  color: p => vocColor(p.voc.value) },
     { label: 'UL-94',     get: p => p.ul94 },
@@ -3187,6 +3205,10 @@ const VAL_PROPS: Array<{ key: string; label: string; unit: string }> = [
   { key: 'mfi',     label: 'MFI',     unit: 'g/10min' },
   { key: 'density', label: '비중',     unit: 'g/cm³' },
   { key: 'vicat',   label: 'Vicat',   unit: '℃' },
+  { key: 'flexMod',    label: '굴곡탄성률', unit: 'GPa' },
+  { key: 'elongation', label: '파단신율',   unit: '%' },
+  { key: 'izodCold',   label: 'Izod-30℃',  unit: 'kJ/m²' },
+  { key: 'shrinkage',  label: '성형수축률', unit: '%' },
 ]
 
 function mapeColor(p: number): string {
@@ -3277,7 +3299,7 @@ function ValidationTab({
           </div>
 
           {/* 프로퍼티별 카드 */}
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
             {VAL_PROPS.map(p => {
               const v = view.perProperty[p.key]
               if (!v) return (
@@ -3336,7 +3358,8 @@ function ValidationTab({
                     {VAL_PROPS.map(p => {
                       const e = g.errors[p.key]
                       if (!e) return <TableCell key={p.key} className="text-center text-[11px] text-gray-300">—</TableCell>
-                      const dec = p.key === 'density' ? 2 : p.key === 'mfi' ? 1 : 0
+                      const dec = p.key === 'density' || p.key === 'flexMod' || p.key === 'shrinkage' ? 2
+                        : p.key === 'mfi' || p.key === 'elongation' || p.key === 'izodCold' ? 1 : 0
                       return (
                         <TableCell key={p.key} className={`text-center text-[11px] tabular-nums rounded ${cellColor(e.pctErr)}`}>
                           {e.pred.toFixed(dec)} / {e.ref.toFixed(dec)}

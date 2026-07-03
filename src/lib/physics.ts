@@ -78,6 +78,10 @@ export interface PredictionResult {
   mi200:   { value: number; low: number; high: number }   // NEW: 200℃/21.6kg
   mi250_2: { value: number; low: number; high: number }   // NEW: 250℃/2.16kg
   mi250_5: { value: number; low: number; high: number }   // NEW: 250℃/5kg
+  flexMod:    { value: number; low: number; high: number } // NEW: 굴곡탄성률 GPa
+  elongation: { value: number; low: number; high: number } // NEW: 파단신율 %
+  izodCold:   { value: number; low: number; high: number } // NEW: -30℃ 노치 Izod kJ/m²
+  shrinkage:  { value: number; low: number; high: number } // NEW: 성형수축률 %
   voc:     { value: number; low: number; high: number }
   cost:    { value: number; low: number; high: number }
   ul94:    'V-0' | 'V-2' | 'HB' | 'N/A'
@@ -472,6 +476,73 @@ export function densityCalc(f: Formulation, sanWt: number): number {
   return totalVol > 1e-9 ? totalW / totalVol : 1.06
 }
 
+// ──────────────────────────────────────────────
+// 신규 4물성: 굴곡탄성률·파단신율·저온충격 retention·성형수축률
+// ──────────────────────────────────────────────
+// 실효 고무상 (연질상 총량) — 기본값(gAbsRubber=50)에서 f.gAbs 그대로 (중립)
+export function effectiveRubber(f: Formulation): number {
+  const rubberContentFactor = (f.gAbsRubber ?? 50) / 50
+  return f.gAbs * rubberContentFactor + f.uhmwSr + f.mbs * 0.7 + f.sebs * 0.7
+    + f.acrylicIm * 0.6 + f.ema * 0.8
+}
+
+// 굴곡탄성률 (GPa) — rule-of-mixtures(연질상↓) + 충전재 포화 강화(Halpin-Tsai 근사)
+export function flexModulus(f: Formulation, fiberEff = 1.0): number {
+  const effRubber = effectiveRubber(f)
+  const silaneBoost = f.silane >= 0.1 ? 1.15 : 1.0
+  const v = 2.32
+    - effRubber * 0.022
+    + 5.2 * (1 - Math.exp(-f.glassFiber / 22)) * silaneBoost * fiberEff
+    + 10.5 * (1 - Math.exp(-f.carbonFiber / 18)) * fiberEff
+    + 1.6 * (1 - Math.exp(-f.talc / 14)) * (f.silane >= 0.1 ? 1.1 : 1.0)
+    + 0.9 * (1 - Math.exp(-Math.min(f.nanoclay, 6) / 3))
+    + f.pc * 0.001 + f.npmi * 0.024 + f.alphaMsan * 0.012 + f.phosphorusFr * 0.010
+  return Math.max(0.8, Math.min(12, v))
+}
+
+// 파단신율 (%) — 고무↑, 충전재·섬유↓↓, FR 취성화, PC 블렌드↑↑, N-PMI/αMSAN 취성화
+export function elongationAtBreak(f: Formulation): number {
+  const effRubber = effectiveRubber(f)
+  let e = 8 + effRubber * 0.9
+  // N-PMI 취성화: izod와 동일한 포화 로지스틱 (glassy 매트릭스 전이)
+  e -= 18 / (1 + Math.exp(-(f.npmi - 19.5) / 1.5))
+  e -= f.alphaMsan * 0.45
+  e = Math.max(1.5, e)
+  // 섬유/충전재 knockdown (승산) — CF는 GF보다 취성화 강함
+  const fiberKnock = Math.exp(-(f.glassFiber + f.carbonFiber * 2.5) / 12)
+  e *= fiberKnock
+  e *= Math.exp(-f.talc / 25)
+  e *= Math.max(0.4, 1 - f.phosphorusFr * 0.025)
+  // 섬유 복합재 하한 (매트릭스 항복 신율)
+  if (f.glassFiber + f.carbonFiber > 0) e = Math.max(e, 2.0)
+  // PC 블렌드 강인화
+  e += 75 * (1 - Math.exp(-f.pc / 55)) * fiberKnock
+  return Math.max(1.5, Math.min(120, e))
+}
+
+// -30℃ 저온 충격 retention — 고무↑·PC↑·대입자↑ 유리, 섬유/FR 불리
+export function coldIzodRetention(f: Formulation): number {
+  const effRubber = effectiveRubber(f)
+  const rubberPSize = f.rubberPSize ?? 0.3
+  let ret = 0.35 + effRubber * 0.0025
+    + (f.pc / 100) * 0.45
+    + (rubberPSize > 0.35 ? Math.min((rubberPSize - 0.35) * 0.3, 0.08) : 0)
+  return Math.max(0.15, Math.min(0.85, ret))
+}
+
+// 성형수축률 (%) — 비정질 ABS ~0.55, 충전재·섬유↓↓, 금형온도↑ → 약간↑
+export function moldShrinkage(f: Formulation): number {
+  const effRubber = effectiveRubber(f)
+  const v = 0.618 + (f.moldTemp - 70) * 0.002 + effRubber * 0.001
+    - f.npmi * 0.004                      // 고Tg 매트릭스 → 수축↓ (기본 npmi17에서 base 0.55)
+    - 0.42 * (1 - Math.exp(-(f.glassFiber + f.carbonFiber * 2.0) / 15))
+    - 0.18 * (1 - Math.exp(-f.talc / 12))
+    - 0.06 * (1 - Math.exp(-Math.min(f.nanoclay, 6) / 3))
+    - 0.10 * (1 - Math.exp(-f.phosphorusFr / 15))  // 무기/인계 FR 충전 → 수축↓
+    + f.pc * 0.0012
+  return Math.max(0.05, Math.min(1.2, v))
+}
+
 // 세그먼트 분류 (v13 로직 준용)
 export function classifySegment(f: Formulation): 'ABS' | 'ABS+PC' | 'PC+ABS' | 'αMSAN-ABS' {
   const pcRatio = f.pc / Math.max(1, f.npmi + f.gAbs + f.pc + f.alphaMsan)
@@ -489,6 +560,7 @@ export function classifySegment(f: Formulation): 'ABS' | 'ABS+PC' | 'PC+ABS' | '
 // 95% 실험 예상 범위 = value ± 1.96σ. (기존 고정 ±% 밴드를 대체)
 export type ScatterProp =
   | 'hdt' | 'vicat' | 'izod' | 'tensile' | 'mfi' | 'density' | 'voc'
+  | 'flexMod' | 'elongation' | 'izodCold' | 'shrinkage'
 
 const TEST_SCATTER: Record<ScatterProp, { rel: number; abs: number }> = {
   hdt:     { rel: 0.025, abs: 1.5 },   // ℃ : ~±2-3℃ 95%
@@ -498,6 +570,10 @@ const TEST_SCATTER: Record<ScatterProp, { rel: number; abs: number }> = {
   mfi:     { rel: 0.10,  abs: 0.5 },
   density: { rel: 0.003, abs: 0.002 },
   voc:     { rel: 0.15,  abs: 3 },
+  flexMod:    { rel: 0.04, abs: 0.05 },  // GPa
+  elongation: { rel: 0.18, abs: 1.0 },   // 신율은 산포 큼
+  izodCold:   { rel: 0.15, abs: 0.8 },   // 저온 충격도 산포 큼
+  shrinkage:  { rel: 0.08, abs: 0.03 },  // %
 }
 
 // 물성별 1σ (실험 재현성). 알려지지 않은 파생물성은 같은 계열의 σ를 재사용한다.
@@ -680,8 +756,8 @@ export function predictColdStart(f: Formulation): PredictionResult {
   izodFinal *= (1 - Math.min(f.nanoclay, 8) * 0.04)
   // 고분자량 PC → PC-ABS 인성↑ (PC 함량 가중, cap pc/40)
   izodFinal *= Math.pow(pcMwF, 0.4 * Math.min(f.pc / 40, 1))
-  // 환경: 수분 가수분해 + 서비스/시험 온도
-  izodFinal *= moistureKnockdown * izodTempFactor
+  // 환경: 수분 가수분해 (서비스/시험 온도 계수는 체인 마지막에 적용 — izodCold는 23℃ 기준에서 파생)
+  izodFinal *= moistureKnockdown
 
   // ── 상호작용항 (GROUP A) — 모두 기준값에서 ×1.0
   // A1: 고무 × 매트릭스 분자량 — 강인한 매트릭스가 고무 효율↑ (sanMw=100에서 중립)
@@ -700,6 +776,13 @@ export function predictColdStart(f: Formulation): PredictionResult {
 
   // B2: 웰드라인 녹다운 — 충격 저하 (weldLinePresent=false에서 1.0)
   izodFinal *= weldKnock
+
+  // 23℃ 기준 Izod (모든 조성·수분 보정 포함, 서비스 온도 제외)
+  const izodAt23 = izodFinal
+  // 서비스/시험 온도 계수 — 출력 izod에만 적용 (모든 곱셈 체인이라 순서 이동해도 값 동일)
+  izodFinal *= izodTempFactor
+  // -30℃ 노치 Izod — ambientTemp 슬라이더와 무관한 독립 표준시험 (23℃ 기준 × 저온 retention)
+  const izodColdVal = izodAt23 * coldIzodRetention(f)
 
   let mfiVal = mfiEstimate(f.npmi, rubberForIzod, f.lubricant, f.injTemp, f.glassFiber, f.talc, f.ema, f.pc, f.nanoclay, f.carbonFiber, f.mbs, f.sebs, f.wax, f.alphaMsan, f.phosphorusFr)
   // SAN 분자량↑ → 점도↑ → MFI↓ (기준 100 → ×1)
@@ -752,6 +835,10 @@ export function predictColdStart(f: Formulation): PredictionResult {
     mi200:   scatterBand('mfi', mi200Val),
     mi250_2: scatterBand('mfi', mi250_2Val),
     mi250_5: scatterBand('mfi', mi250_5Val),
+    flexMod:    scatterBand('flexMod', flexModulus(f, fiberEff)),
+    elongation: scatterBand('elongation', elongationAtBreak(f) * moistureKnockdown * weldKnock),
+    izodCold:   scatterBand('izodCold', izodColdVal),
+    shrinkage:  scatterBand('shrinkage', moldShrinkage(f)),
     voc:     scatterBand('voc', vocVal),
     cost:    err(costVal,   0.10),
     ul94,
